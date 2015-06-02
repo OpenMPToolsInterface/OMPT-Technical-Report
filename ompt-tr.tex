@@ -920,6 +920,72 @@ before the task
 
 \end{description}
 
+\descheader{Target Devices}
+
+\begin{description}
+
+\item \verb|ompt_event_target_begin|
+
+  The OpenMP runtime invokes this callback after a task encounters a target construct but before the region is executed by a device.
+  The callback executes in the context of the task that encountered the target construct.
+  This callback has type signature \verb|ompt_new_target_callback_t|.
+
+\item \verb|ompt_event_target_end|
+
+  The OpenMP runtime invokes this callback after the region is executed by a device but before the encountering task leaves the target region.
+  This callback has type signature \verb|ompt_target_callback_t|.
+
+\item \verb|ompt_event_target_data_begin|
+
+  The OpenMP runtime invokes this callback after a task encounters a target data construct but before the new data environment is created.
+  The callback executes in the context of the task that encountered the target data construct.
+  This callback has type signature \verb|ompt_new_target_callback_t|.
+
+\item \verb|ompt_event_target_data_end|
+
+  The OpenMP runtime invokes this callback after all corresponding data mapping operations have finished execution but before
+  the encountering task leaves a target data region and before the data environment is deleted.
+  This callback has type signature \verb|ompt_target_callback_t|.
+
+\item \verb|ompt_event_target_update_begin|
+
+  The OpenMP runtime invokes this callback after a task encounters a target update construct but before the corresponding
+  list items are made consistent with the device data environment.
+  The callback executes in the context of the task that encountered the target data construct.
+  This callback has type signature \verb|ompt_new_target_callback_t|.
+
+\item \verb|ompt_event_target_update_end|
+
+  The OpenMP runtime invokes this callback after the corresponding list items are made consistent with the host data environment
+  but before the encountering task leaves the target update region.
+  This callback has type signature \verb|ompt_target_callback_t|.
+
+\item \verb|ompt_event_data_map_begin|
+
+  The OpenMP runtime invokes this callback just before a variable is mapped to or from the device data environment.
+  The callback executes in the context of the task that invokes the data mapping.
+  This callback has type signature \verb|ompt_new_data_map_callback_t|.
+
+\item \verb|ompt_event_data_map_end|
+
+  The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment.
+  The callback executes in the context of the task that invokes the data mapping.
+  This callback has type signature \verb|ompt_data_map_callback_t|.
+
+\item \verb|ompt_event_target_invoke_begin|
+
+  The OpenMPruntime invokes this callback just before the target function is invoked on a device, but after the
+  begin event of the enclosing target region and after all variables of the enclosing target region are mapped.
+  The callback executes in the context of the task that encountered the target construct.
+  This callback has type signature \verb|ompt_new_target_callback_t|.
+
+\item \verb|ompt_event_target_invoke_end|
+
+  The OpenMP runtime invokes this callback immediately after a target function was invoked on a device.
+  This callback has type signature \verb|ompt_target_callback_t|.
+
+\end{description}
+
 %*** Jim: Why do we treat the barrier at the end of single differently from that at the end of master?
 
 \descheader{Barriers}
@@ -1592,6 +1658,68 @@ The recommended format for the version string is
 \end{comment}
  
 
+\subsection{Target Device Inquiry (Mandatory)}
+\label{sec:target-region}
+The function \verb|ompt_get_target_device_id| returns the ID of the active target device.
+\begin{quote}
+\begin{verbatim}
+OMPT_API ompt_target_device_id_t ompt_get_target_device_id();
+\end{verbatim}
+\end{quote}
+
+\noindent
+The function \verb|ompt_get_target_id| returns the ID of the current target region.
+
+\begin{quote}
+\begin{verbatim}
+OMPT_API ompt_target_id_t ompt_get_target_id();
+\end{verbatim}
+\end{quote}
+
+\noindent
+The function \verb|ompt_get_target_device_time| returns the current time stamp on the
+target device with ID \verb|id|. The host and target device typically
+run different operating system instances and distinct
+instances of an OpenMP runtime. It is also very likely that
+host and target device are different hardware components
+which run different clock generators. Thus, no global time
+stamp exists to put the host-side and device-side events in
+a unified temporal order. This inquiry function can be used
+to synchronize time stamps on the target device with time
+stamps on the host.
+
+\begin{quote}
+\begin{verbatim}
+OMPT_API ompt_target_device_time_t ompt_get_target_device_time(
+  omp_target_device_id_t id
+);
+\end{verbatim}
+\end{quote}
+
+The function \verb|ompt_target_map| maps the specified number of bytes
+between host and target device according to the map type.
+The first argument is a pointer to the destination of the
+mapping, the second argument specifies the source address
+of the map operation. The \verb|sync_type| parameter defines
+if the data mapping is blocking or non-blocking.
+\begin{quote}
+\begin{verbatim}
+OMPT_API void ompt_target_map(
+  void* dst,
+  void* src,
+  ompt_target_device_id_t id,
+  ompt_data_map_t map_type,
+  ompt_target_sync_t sync_type,
+  ompt_data_size_t bytes
+);
+\end{verbatim}
+\end{quote}
+
+\noindent
+All target device inquiry functions are only allowed to be
+called in the extend of a target data or target update region
+and in the specified target event callbacks. Otherwise the
+behavior is unspecified.
 
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
@@ -1957,93 +2085,109 @@ The purpose of these callbacks is described in Section~\ref{sec:events}.
 \begin{verbatim}
 typedef enum {  
   /*--- Mandatory Events ---*/          
-  ompt_event_parallel_begin           = 1,  /* parallel create         */
-  ompt_event_parallel_end             = 2,  /* parallel exit           */
+  ompt_event_parallel_begin           = 1,  /* parallel create            */
+  ompt_event_parallel_end             = 2,  /* parallel exit              */
 
-  ompt_event_task_begin               = 3,  /* task create             */
-  ompt_event_task_end                 = 4,  /* task destroy            */
+  ompt_event_task_begin               = 3,  /* task create                */
+  ompt_event_task_end                 = 4,  /* task destroy               */
 
-  ompt_event_thread_begin             = 5,  /* thread begin            */
-  ompt_event_thread_end               = 6,  /* thread end              */
+  ompt_event_thread_begin             = 5,  /* thread begin               */
+  ompt_event_thread_end               = 6,  /* thread end                 */
 
-  ompt_event_control                  = 7,  /* support control calls   */
+  ompt_event_control                  = 7,  /* support control calls      */
 
-  ompt_event_runtime_shutdown         = 8,  /* runtime shutdown        */
+  ompt_event_runtime_shutdown         = 8,  /* runtime shutdown           */
 
   /*--- Optional Events (blame shifting) ---*/  		    
-  ompt_event_idle_begin		              = 9,  /* begin idle state        */ 
-  ompt_event_idle_end		                = 10, /* end idle state          */ 
+  ompt_event_idle_begin	              = 9,  /* begin idle state           */ 
+  ompt_event_idle_end                 = 10, /* end idle state             */ 
 
-  ompt_event_wait_barrier_begin       = 11, /* begin wait at barrier   */
-  ompt_event_wait_barrier_end         = 12, /* end wait at barrier     */
-  ompt_event_wait_taskwait_begin      = 13, /* begin wait at taskwait  */
-  ompt_event_wait_taskwait_end        = 14, /* end wait at taskwait    */
-  ompt_event_wait_taskgroup_begin     = 15, /* begin wait at taskgroup */
-  ompt_event_wait_taskgroup_end       = 16, /* end wait at taskgroup   */
+  ompt_event_wait_barrier_begin       = 11, /* begin wait at barrier      */
+  ompt_event_wait_barrier_end         = 12, /* end wait at barrier        */
+  ompt_event_wait_taskwait_begin      = 13, /* begin wait at taskwait     */
+  ompt_event_wait_taskwait_end        = 14, /* end wait at taskwait       */
+  ompt_event_wait_taskgroup_begin     = 15, /* begin wait at taskgroup    */
+  ompt_event_wait_taskgroup_end       = 16, /* end wait at taskgroup      */
 
-  ompt_event_release_lock             = 17, /* lock release            */
-  ompt_event_release_nest_lock_last   = 18, /* last nest lock release  */
-  ompt_event_release_critical         = 19, /* critical release        */
-  ompt_event_release_atomic           = 20, /* atomic release          */
-  ompt_event_release_ordered          = 21, /* ordered release         */
+  ompt_event_release_lock             = 17, /* lock release               */
+  ompt_event_release_nest_lock_last   = 18, /* last nest lock release     */
+  ompt_event_release_critical         = 19, /* critical release           */
+  ompt_event_release_atomic           = 20, /* atomic release             */
+  ompt_event_release_ordered          = 21, /* ordered release            */
 
   /*--- Optional Events (synchronous events) --- */        	    
-  ompt_event_implicit_task_begin      = 22, /* implicit task create    */
-  ompt_event_implicit_task_end        = 23, /* implicit task destroy   */
+  ompt_event_implicit_task_begin      = 22, /* implicit task create       */
+  ompt_event_implicit_task_end        = 23, /* implicit task destroy      */
   
-  ompt_event_initial_task_begin       = 24, /* initial task create     */
-  ompt_event_initial_task_end         = 25, /* initial task destroy    */
+  ompt_event_initial_task_begin       = 24, /* initial task create        */
+  ompt_event_initial_task_end         = 25, /* initial task destroy       */
 				    
-  ompt_event_task_switch              = 26, /* task switch             */
+  ompt_event_task_switch              = 26, /* task switch                */
 				    				    
-  ompt_event_loop_begin               = 27, /* task at loop begin      */
-  ompt_event_loop_end                 = 28, /* task at loop end        */
+  ompt_event_loop_begin               = 27, /* task at loop begin         */
+  ompt_event_loop_end                 = 28, /* task at loop end           */
   
-  ompt_event_sections_begin           = 29, /* task at section begin   */
-  ompt_event_sections_end             = 30, /* task at section end     */
+  ompt_event_sections_begin           = 29, /* task at section begin      */
+  ompt_event_sections_end             = 30, /* task at section end        */
   
-  ompt_event_single_in_block_begin    = 31, /* task at single begin    */
-  ompt_event_single_in_block_end      = 32, /* task at single end      */
-  ompt_event_single_others_begin      = 33, /* task at single begin    */
-  ompt_event_single_others_end        = 34, /* task at single end      */
+  ompt_event_single_in_block_begin    = 31, /* task at single begin       */
+  ompt_event_single_in_block_end      = 32, /* task at single end         */
+  ompt_event_single_others_begin      = 33, /* task at single begin       */
+  ompt_event_single_others_end        = 34, /* task at single end         */
 	
-  ompt_event_workshare_begin          = 35, /* task at workshare begin */		              	 			    
-  ompt_event_workshare_end            = 36, /* task at workshare end   */	
+  ompt_event_workshare_begin          = 35, /* task at workshare begin    */		              	 			    
+  ompt_event_workshare_end            = 36, /* task at workshare end      */	
 	              	 			    
-  ompt_event_master_begin             = 37, /* task at master begin    */
-  ompt_event_master_end               = 38, /* task at master end      */
+  ompt_event_master_begin             = 37, /* task at master begin       */
+  ompt_event_master_end               = 38, /* task at master end         */
   
-  ompt_event_barrier_begin            = 39, /* task at barrier begin   */
-  ompt_event_barrier_end              = 40, /* task at barrier end     */
+  ompt_event_barrier_begin            = 39, /* task at barrier begin      */
+  ompt_event_barrier_end              = 40, /* task at barrier end        */
   
-  ompt_event_taskwait_begin           = 41, /* task at taskwait begin  */
-  ompt_event_taskwait_end             = 42, /* task at task wait end   */
+  ompt_event_taskwait_begin           = 41, /* task at taskwait begin     */
+  ompt_event_taskwait_end             = 42, /* task at task wait end      */
   
-  ompt_event_taskgroup_begin          = 43, /* task at taskgroup begin */
-  ompt_event_taskgroup_end            = 44, /* task at taskgroup end   */
+  ompt_event_taskgroup_begin          = 43, /* task at taskgroup begin    */
+  ompt_event_taskgroup_end            = 44, /* task at taskgroup end      */
 
-  ompt_event_release_nest_lock_prev   = 45, /* prev nest lock release  */
+  ompt_event_release_nest_lock_prev   = 45, /* prev nest lock release     */
 								    
-  ompt_event_wait_lock                = 46, /* lock wait               */
-  ompt_event_wait_nest_lock           = 47, /* nest lock wait          */
-  ompt_event_wait_critical            = 48, /* critical wait           */
-  ompt_event_wait_atomic              = 49, /* atomic wait             */
-  ompt_event_wait_ordered             = 50, /* ordered wait            */
+  ompt_event_wait_lock                = 46, /* lock wait                  */
+  ompt_event_wait_nest_lock           = 47, /* nest lock wait             */
+  ompt_event_wait_critical            = 48, /* critical wait              */
+  ompt_event_wait_atomic              = 49, /* atomic wait                */
+  ompt_event_wait_ordered             = 50, /* ordered wait               */
 		 	            				    	    
-  ompt_event_acquired_lock            = 51, /* lock acquired           */
-  ompt_event_acquired_nest_lock_first = 52, /* 1st nest lock acquired  */
-  ompt_event_acquired_nest_lock_next  = 53, /* next nest lock acquired */
-  ompt_event_acquired_critical        = 54, /* critical acquired       */
-  ompt_event_acquired_atomic          = 55, /* atomic acquired         */
-  ompt_event_acquired_ordered         = 56, /* ordered acquired        */
+  ompt_event_acquired_lock            = 51, /* lock acquired              */
+  ompt_event_acquired_nest_lock_first = 52, /* 1st nest lock acquired     */
+  ompt_event_acquired_nest_lock_next  = 53, /* next nest lock acquired    */
+  ompt_event_acquired_critical        = 54, /* critical acquired          */
+  ompt_event_acquired_atomic          = 55, /* atomic acquired            */
+  ompt_event_acquired_ordered         = 56, /* ordered acquired           */
 			            				    	    
-  ompt_event_init_lock                = 57, /* lock init               */
-  ompt_event_init_nest_lock           = 58, /* nest lock init          */
+  ompt_event_init_lock                = 57, /* lock init                  */
+  ompt_event_init_nest_lock           = 58, /* nest lock init             */
   
-  ompt_event_destroy_lock             = 59, /* lock destruction        */
-  ompt_event_destroy_nest_lock        = 60, /* nest lock destruction   */
+  ompt_event_destroy_lock             = 59, /* lock destruction           */
+  ompt_event_destroy_nest_lock        = 60, /* nest lock destruction      */
 			            	 			         
-  ompt_event_flush                    = 61  /* after executing flush   */ 
+  ompt_event_flush                    = 61  /* after executing flush      */ 
+
+  ompt_event_target_begin             = 62  /* target begin               */
+  ompt_event_target_end               = 63  /* target end                 */                                                                                                                \
+
+  ompt_event_target_data_begin        = 64  /* target data begin          */
+  ompt_event_target_data_end          = 65  /* target data end            */
+
+  ompt_event_target_update_begin      = 66  /* target update begin        */
+  ompt_event_target_update_end        = 67  /* target update end          */
+
+  ompt_event_data_map_begin           = 68  /* before data mapping        */
+  ompt_event_data_map_end             = 69  /* after data mapping         */
+
+  ompt_event_target_invoke_begin      = 70  /* before invoking the target */ 
+  ompt_event_target_invoke_end        = 71  /* after invoking the target  */
+
 
 } ompt_event_t;
 \end{verbatim}
@@ -2121,6 +2265,35 @@ typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
   void *new_task_function           /* pointer to outlined function */
   );		
 
+/* targets */
+typedef void (*ompt_new_target_callback_t) (
+  ompt_task_id_t task_id,           /* ID of task                   */
+  ompt_target_id_t target_id,       /* ID of target* region         */
+  ompt_target_device_id_t device_id,/* ID of the device             */
+  void* target_function             /* pointer to outlined function */
+);
+
+typedef void (*ompt_target_callback_t) ( /* target* region end events */
+  ompt_task_id_t task_id,           /* ID of task                   */
+  ompt_target_id_t target_id        /* ID of target* region         */
+);
+
+typedef void (*ompt_new_data_map_callback_t) (
+  ompt_task_id_t task_id,           /* ID of task                   */
+  ompt_target_id_t target_id,       /* ID of target* region         */
+  ompt_data_map_id_t data_map_id,   /* ID of data map operation     */
+  ompt_target_device_id_t device_id,/* ID of the device             */
+  ompt_target_sync_t sync_type,     /* synchronous or asynchronus data mapping*/
+  ompt_data_map_t map_type,         /* type of the data mapping / motion */
+  ompt_data_size_t bytes            /* amount of mapped bytes       */
+);
+
+typedef void (*ompt_data_map_callback_t) ( /* end of a data map operation */
+  ompt_task_id_t task_id,           /* ID of task                   */
+  ompt_target_id_t target_id,       /* ID of target* region         */
+  ompt_data_map_id_t data_map_id    /* ID of data map operation     */
+);
+
 /* program */						   
 typedef void (*ompt_control_callback_t) ( /* for control            */	   
   uint64_t command,                 /* command of control call      */
@@ -2189,6 +2362,30 @@ OMPT_API ompt_task_id_t *ompt_get_task_id(  /* identify a task                  
 
 OMPT_API ompt_frame_t *ompt_get_task_frame(
   int depth                      /*  how many levels removed from the current task       */
+);
+
+/* target device inquiry */
+OMPT_API ompt_target_device_id_t ompt_get_target_device_id( /* return active target
+                                                               device ID                 */
+  void
+);
+
+OMPT_API ompt_target_id_t ompt_get_target_id( /* return current target region ID         */
+  void
+);
+
+OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return current time
+                                                                   stamp of a device     */
+  omp_target_device_id_t id      /* the target device of interest                        */
+);
+
+OMPT_API void ompt_target_map(   /* maps data to or from a target device                 */
+  void* dst,                     /* destination address                                  */
+  void* src,                     /* source address                                       */
+  ompt_target_device_id_t id,    /* the ID of the target device                          */
+  ompt_data_map_t map_type,      /* mapping to or from a target devixe                   */
+  ompt_target_sync_t sync_type,  /* blocking or non-blocking data mapping                */
+  ompt_data_size_t bytes         /* number of bytes to be mapped                         */
 );
 
 \end{verbatim}
