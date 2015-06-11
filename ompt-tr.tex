@@ -230,6 +230,23 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   
 \end{description}
   
+\descheader{Target Wait States}
+
+\begin{description}
+
+\item \verb|ompt_state_wait_target| (flexible)
+
+  The thread is waiting at a target construct. A compliant
+  implementation may have a thread enter this state early, when the
+  thread encounters a target construct, or late, when the thread
+  begins to wait for the target region to complete.
+  
+\item \verb|ompt_state_wait_target_data_map| (optional)
+
+  The thread is waiting for a target data map operation to complete.
+
+\end{description}
+  
 \descheader{Task Wait States}
 
 \begin{description}
@@ -424,6 +441,22 @@ This callback has type signature \verb|ompt_parallel_callback_t|.
 
 \end{description}
 
+\descheader{Target Regions}
+
+\begin{description}
+
+\item \verb|ompt_event_target_begin|
+
+  The OpenMP runtime invokes this callback after a task encounters a target construct but before the region is executed by a device.
+  The callback executes in the context of the task that encountered the target construct.
+  This callback has type signature \verb|ompt_new_target_callback_t|.
+
+\item \verb|ompt_event_target_end|
+
+  The OpenMP runtime invokes this callback after the region is executed by a device but before the encountering task leaves the target region.
+  This callback has type signature \verb|ompt_target_callback_t|.
+  
+\end{description}
 
 \descheader{Tasks}
 
@@ -923,17 +956,6 @@ before the task
 \descheader{Target Devices}
 
 \begin{description}
-
-\item \verb|ompt_event_target_begin|
-
-  The OpenMP runtime invokes this callback after a task encounters a target construct but before the region is executed by a device.
-  The callback executes in the context of the task that encountered the target construct.
-  This callback has type signature \verb|ompt_new_target_callback_t|.
-
-\item \verb|ompt_event_target_end|
-
-  The OpenMP runtime invokes this callback after the region is executed by a device but before the encountering task leaves the target region.
-  This callback has type signature \verb|ompt_target_callback_t|.
 
 \item \verb|ompt_event_target_data_begin|
 
@@ -1721,6 +1743,53 @@ called in the extend of a target data or target update region
 and in the specified target event callbacks. Otherwise the
 behavior is unspecified.
 
+\section{Target Device Events (optional)}
+\label{sec:target-devce-data}
+The OMPT interface provides a portable method for event data collection on target devices based on asynchronous buffers that are managed by an OpenMP runtime implementation. 
+%Buffers are per device
+A tool only needs to register a \emph{buffer request} and a \emph{buffer complete} callback with the following type signatures: 
+\begin{quote}
+\begin{verbatim}
+OMPT_API void ompt_target_buffer_request_callback_t (
+  ompt_target_event_t* buffer,
+  size_t bytes
+);
+\end{verbatim}
+\end{quote}
+
+\begin{quote}
+\begin{verbatim}
+OMPT_API void ompt_target_buffer_complete_callback_t (
+  ompt_target_event_t* buffer,
+  ompt_target_device_id_t device, 
+  size_t valid_bytes
+);
+\end{verbatim}
+\end{quote}
+
+The OpenMP runtime requests memory to store target device events using the \verb|ompt_target_buffer_request_callback_t| callback, whenever it needs to. 
+It depends on the OpenMP runtime implementation to choose a convenient situation. 
+The first argument of the buffer request callback is a pointer to memory where the OpenMP runtime is allowed to store event records. 
+The second argument is the number of allocated bytes. 
+%
+The OpenMP runtime can trigger \verb|ompt_target_buffer_complete_callback_t| when all records written to the respective buffer are valid. 
+It is implementation-defined when an OpenMP runtime triggers this callback, but the runtime has to ensure to trigger them before it shuts down. 
+The first argument of the buffer complete callback is a pointer to a previously by the OpenMP runtime requested buffer.
+The second argument is the ID of the associated target device. 
+The third argument is the number of valid bytes in the buffer. 
+%
+The buffer callback routines are registered with the routine \verb|ompt_target_register_buffer_callbacks| that can be looked up by name using the \verb|ompt_function_lookup_t| function. 
+%
+Target device event records contain a field that specifies the event type and a time stamp, when the event occurred on the device. 
+Depending on the event type, additional fields are available (see appendix \ref{appendix:ompt-target-device-events}).
+
+% As the internal clock of host and target can run at different frequency and the tool attaches on the host, device time stamps have to be converted to host time stamps.
+
+Do we want a \verb|ompt_target_next_event| routine?
+%
+Another option for converting target device time stamps to host time stamps:
+Pass a function pointer to a \verb|ompt_get_host_time| routine to the OpenMP runtime. 
+
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
 
@@ -2265,7 +2334,7 @@ typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
   void *new_task_function           /* pointer to outlined function */
   );		
 
-/* targets */
+/* target device */
 typedef void (*ompt_new_target_callback_t) (
   ompt_task_id_t task_id,           /* ID of task                   */
   ompt_target_id_t target_id,       /* ID of target* region         */
@@ -2389,7 +2458,95 @@ OMPT_API void ompt_target_map(   /* maps data to or from a target device        
 );
 
 \end{verbatim}
- 
+
+\clearpage  
+\subsection{Target Event Types and Buffer Management}
+\label{appendix:ompt-target-device-events}
+\begin{verbatim}
+/* target event record */
+typedef struct
+{
+  ompt_event_t type;                           /* event type */
+  uint64_t time;                               /* time, when the event occured */
+  union
+  {
+    ompt_target_parallel_t parallel;           /* for inside parallel */
+    ompt_target_new_workshare_t new_workshare; /* for workshares */
+    ompt_target_new_parallel_t new_parallel;   /* for new parallel */
+    ompt_target_task_t task;                   /* for tasks */
+    ompt_target_task_switch_t task_switch;     /* for task switch */
+    ompt_target_new_task_t new_task;           /* for new tasks */
+  } event;
+} ompt_target_event_t;
+
+/* target event types */
+typedef struct
+{
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
+  ompt_task_id_t task_id;          /* ID of task */
+} ompt_target_parallel_t;
+
+typedef struct
+{
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
+  ompt_task_id_t task_id;          /* ID of task */
+  void *workshare_function;        /* pointer to outlined function */
+} ompt_target_new_workshare_t;
+
+typedef struct
+{
+  (same as 'task_id' in 'ompt_target_parallel_t'?) */
+  ompt_task_id_t parent_task_id;   /* ID of parent task */
+  ompt_frame_t *parent_task_frame; /* frame data of parent task */
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
+  uint32_t requested_team_size;    /* requested number of threads */
+  void *parallel_function;         /* pointer to outlined function */
+} ompt_target_new_parallel_t;
+
+typedef struct
+{
+  ompt_task_id_t task_id; /* ID of task */
+} ompt_target_task_t;
+
+typedef struct
+{
+  ompt_task_id_t suspended_task_id; /* ID of suspended task */
+  ompt_task_id_t resumed_task_id;   /* ID of resumed task */
+} ompt_target_task_switch_t;
+
+typedef struct
+{
+  ompt_task_id_t parent_task_id;   /* ID of parent task */
+  ompt_frame_t *parent_task_frame; /* frame data of parent task */
+  ompt_task_id_t new_task_id;      /* ID of created task */
+  void *new_task_function;         /* pointer to outlined function */
+} ompt_target_new_task_t;
+
+/* buffer management routines */
+typedef void (*ompt_target_buffer_request_callback_t) (
+  ompt_target_event_t* buffer,   /* pointer to host memory to store target records */
+  size_t bytes                   /* buffer size in bytes */
+);
+  
+typedef void (*ompt_target_buffer_complete_callback_t) (
+  ompt_target_event_t* buffer,   /* pointer to buffer with target event records */
+  omp_target_device_id_t device, /* target device */
+  size_t valid_bytes             /* number of valid bytes in the buffer */
+);
+
+/* register target buffer callbacks */
+OMPT_API void ompt_target_register_buffer_callbacks(
+  /* pointer to buffer request callback */
+  ompt_target_buffer_request_callback_t request_callback,
+  /* pointer to buffer complete callback */
+  ompt_target_buffer_complete_callback_t complete_callback 
+);
+\end{verbatim}
+% typedef uint64_t (*ompt_get_host_time_t)( /* retrieve host time stamps */
+%   void 
+% );
+%   /* pointer to host time stamp function */
+%   ompt_get_host_time_t host_time_function,
 
 \clearpage
 \subsection{Initialization} 
