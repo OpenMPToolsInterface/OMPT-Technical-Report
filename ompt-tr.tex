@@ -1750,7 +1750,7 @@ The OMPT interface provides a portable method for event data collection on targe
 A tool only needs to register a \emph{buffer request} and a \emph{buffer complete} callback with the following type signatures: 
 \begin{quote}
 \begin{verbatim}
-OMPT_API void ompt_target_buffer_request_callback_t (
+typedef void ompt_target_buffer_request_callback_t (
   ompt_target_event_t* buffer,
   size_t bytes
 );
@@ -1759,7 +1759,7 @@ OMPT_API void ompt_target_buffer_request_callback_t (
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API void ompt_target_buffer_complete_callback_t (
+typedef void ompt_target_buffer_complete_callback_t (
   ompt_target_event_t* buffer,
   ompt_target_device_id_t device, 
   size_t valid_bytes
