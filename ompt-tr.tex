@@ -2470,16 +2470,34 @@ typedef struct
   uint64_t time;                               /* time, when the event occured */
   union
   {
+    ompt_target_thread_t;                      /* for thread          */
+    ompt_target_thread_type_t;                 /* for thread          */
+    ompt_target_wait_t;                        /* for wait            */
     ompt_target_parallel_t parallel;           /* for inside parallel */
-    ompt_target_new_workshare_t new_workshare; /* for workshares */
-    ompt_target_new_parallel_t new_parallel;   /* for new parallel */
-    ompt_target_task_t task;                   /* for tasks */
-    ompt_target_task_switch_t task_switch;     /* for task switch */
-    ompt_target_new_task_t new_task;           /* for new tasks */
+    ompt_target_new_workshare_t new_workshare; /* for workshares      */
+    ompt_target_new_parallel_t new_parallel;   /* for new parallel    */
+    ompt_target_task_t task;                   /* for tasks           */
+    ompt_target_task_switch_t task_switch;     /* for task switch     */
+    ompt_target_new_task_t new_task;           /* for new tasks       */
   } event;
 } ompt_target_event_t;
 
 /* target event types */
+typedef struct
+{
+  ompt_thread_id_t thread_id       /*ID of thread                  */
+} ompt_target_thread_t;
+
+typedef struct
+{
+  ompt_thread_type_t thread_type,  /* type of thread               */
+  ompt_thread_id_t thread_id       /* ID of thread                 */
+} ompt_target_thread_type_t;
+
+typedef struct {
+  ompt_wait_id_t wait_id           /* wait ID                      */
+} ompt_target_wait_callback_t;
+
 typedef struct
 {
   ompt_parallel_id_t parallel_id;  /* ID of parallel region */
