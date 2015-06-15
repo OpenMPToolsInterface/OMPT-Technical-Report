@@ -1751,8 +1751,8 @@ A tool only needs to register a \emph{buffer request} and a \emph{buffer complet
 \begin{quote}
 \begin{verbatim}
 typedef void ompt_target_buffer_request_callback_t (
-  ompt_target_event_t* buffer,
-  size_t bytes
+  ompt_target_event_t** buffer,
+  size_t* bytes
 );
 \end{verbatim}
 \end{quote}
@@ -1770,7 +1770,8 @@ typedef void ompt_target_buffer_complete_callback_t (
 The OpenMP runtime requests memory to store target device events using the \verb|ompt_target_buffer_request_callback_t| callback, whenever it needs to. 
 It depends on the OpenMP runtime implementation to choose a convenient situation. 
 The first argument of the buffer request callback is a pointer to memory where the OpenMP runtime is allowed to store event records. 
-The second argument is the number of allocated bytes. 
+The second argument is the number of allocated bytes.
+If \verb|*buffer| is set to \verb|NULL|, the OpenMP runtime may drop all target device events.
 %
 The OpenMP runtime can trigger \verb|ompt_target_buffer_complete_callback_t| when all records written to the respective buffer are valid. 
 It is implementation-defined when an OpenMP runtime triggers this callback, but the runtime has to ensure to trigger them before it shuts down. 
@@ -2542,8 +2543,8 @@ typedef struct
 
 /* buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
-  ompt_target_event_t* buffer,   /* pointer to host memory to store target records */
-  size_t bytes                   /* buffer size in bytes */
+  ompt_target_event_t** buffer,   /* pointer to host memory to store target records */
+  size_t* bytes                   /* buffer size in bytes */
 );
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
