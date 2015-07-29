@@ -1867,8 +1867,8 @@ There are several routines that need to be used together process target trace re
 \begin{verbatim}
 OMPT_API int ompt_trace_record_cursor_advance(
   ompt_trace_buffer_t *buffer, 
-  ompt_target_buffer_cursor_t current, 
-  ompt_target_buffer_cursor_t *next
+  ompt_trace_buffer_cursor_t current, 
+  ompt_trace_buffer_cursor_t *next
 ); 
 \end{verbatim}
 \end{quote}
@@ -1877,25 +1877,28 @@ advances from one trace record in the specified buffer to the next. It returns 0
 The function \verb|ompt_trace_record_get_type| enables a tool to inspect the type of a record to determine whether it is both a known type and worth processing further. 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_target_record_type_t ompt_trace_record_get_type(
-  ompt_target_buffer_t *buffer, 
-  ompt_target_buffer_cursor_t current
+OMPT_API ompt_record_type_t ompt_trace_record_get_type(
+  ompt_trace_buffer_t *buffer, 
+  ompt_trace_buffer_cursor_t current
 );
 \end{verbatim}
 \end{quote}
-Each of the OMPT event types has an associated record type. 
-\verb|ompt_trace_record_get_type| returns either a known OMPT record type, \verb|ompt_target_record_notype| if the cursor is out of bounds, or  \verb|ompt_target_record_native| if the record represents a device native record type that does not represent an OMPT event record. To decode native records, one must use device-specific functions looked up using the lookup function returned by the \verb|ompt_get_device_info| inquiry function. 
+%Each of the OMPT event types has an associated record type. 
+\verb|ompt_trace_record_get_type| returns either \verb|ompt_trace_record_ompt| if the record represents a OMPT event, \verb|ompt_trace_record_notype| if the cursor is out of bounds, or  \verb|ompt_trace_record_native| if the record represents a device native record type that does not represent an OMPT event record, Appendix~\ref{appendix:ompt-target-device-events} defines the corresponing enumeration type for \verb|ompt_trace_record_type_t|.
+To decode native records, one must use device-specific functions looked up using the lookup function returned by the \verb|ompt_get_device_info| inquiry function. 
 
-To inspect the information in a trace record, a tool invokes the following function:
+To inspect the information in for an OMPT trace record event, a tool invokes the following function:
 \begin{quote}
 \begin{verbatim}
 OMPT_API ompt_record_t *ompt_trace_record_get(
-  ompt_target_buffer_t *buffer, 
+  ompt_trace_buffer_t *buffer, 
   ompt_cursor_t current
 );
 \end{verbatim}
 \end{quote}
 This function returns a pointer that may point into the trace buffer, or it may point into thread local storage where the information extracted from a trace record was assembled. The information available for a trace event depends upon its type. For this purpose, Appendix~\ref{appendix:ompt-target-device-events} defines a union type that will be used to return information for different OMPT trace event record types. A subsequent call to \verb|ompt_trace_record_get| may overwrite the contents of the fields in the record returned by a prior invocation.
+
+\textcolor{red}{TODO: Define a function for native event processing: OMPT\_API void *ompt\_trace\_record\_get\_native ?}
 
 \begin{comment}
 
@@ -2635,25 +2638,36 @@ OMPT_API void ompt_target_map(   /* maps data to or from a target device        
 \end{verbatim}
 
 \clearpage  
-\subsection{Target Record Types and Buffer Management}
+\subsection{Trace Record Types and Buffer Management}
 \label{appendix:ompt-target-device-events}
+
+\begin{verbatim}
+/* OMPT record type */
+typedef enum {
+  ompt_trace_record_ompt,
+  ompt_trace_record_native,
+  ompt_trace_record_notype
+} ompt_trace_record_type_t; 
+\end{verbatim}
+
 \begin{verbatim}
 /* OMPT record */
 typedef struct
 {
-  ompt_record_type_t type;                     /* record type */
+  ompt_event_t type                            /* event type */
   uint64_t time;                               /* time, when the record occured */
+  ompt_thread_id_t thread_id;                  /* thread identifier for this record */
   union
   {
-    ompt_target_thread_t;                      /* for thread          */
-    ompt_target_thread_type_t;                 /* for thread type     */
-    ompt_target_wait_t;                        /* for wait            */
-    ompt_target_parallel_t parallel;           /* for inside parallel */
-    ompt_target_new_workshare_t new_workshare; /* for workshares      */
-    ompt_target_new_parallel_t new_parallel;   /* for new parallel    */
-    ompt_target_task_t task;                   /* for tasks           */
-    ompt_target_task_switch_t task_switch;     /* for task switch     */
-    ompt_target_new_task_t new_task;           /* for new tasks       */
+    ompt_record_thread_t;                      /* for thread          */
+    ompt_record_thread_type_t;                 /* for thread type     */
+    ompt_record_wait_t;                        /* for wait            */
+    ompt_record_parallel_t parallel;           /* for inside parallel */
+    ompt_record_new_workshare_t new_workshare; /* for workshares      */
+    ompt_record_new_parallel_t new_parallel;   /* for new parallel    */
+    ompt_record_task_t task;                   /* for tasks           */
+    ompt_record_task_switch_t task_switch;     /* for task switch     */
+    ompt_record_new_task_t new_task;           /* for new tasks       */
     /* there might be additional implementation-specific types listed here */
   } record;
 } ompt_record_t;
@@ -2662,51 +2676,50 @@ typedef struct
 typedef struct
 {
   ompt_thread_id_t thread_id       /* ID of thread                  */
-} ompt_target_thread_t;
+} ompt_record_thread_t;
 
 typedef struct
 {
   ompt_thread_type_t thread_type,  /* type of thread               */
   ompt_thread_id_t thread_id       /* ID of thread                 */
-} ompt_target_thread_type_t;
+} ompt_record_thread_type_t;
 
 typedef struct {
   ompt_wait_id_t wait_id           /* wait ID                      */
-} ompt_target_wait_callback_t;
+} ompt_record_wait_callback_t;
 
 typedef struct
 {
   ompt_parallel_id_t parallel_id;  /* ID of parallel region */
   ompt_task_id_t task_id;          /* ID of task */
-} ompt_target_parallel_t;
+} ompt_record_parallel_t;
 
 typedef struct
 {
   ompt_parallel_id_t parallel_id;  /* ID of parallel region */
   ompt_task_id_t task_id;          /* ID of task */
   void *workshare_function;        /* pointer to outlined function */
-} ompt_target_new_workshare_t;
+} ompt_record_new_workshare_t;
 
 typedef struct
 {
-  (same as 'task_id' in 'ompt_target_parallel_t'?) */
   ompt_task_id_t parent_task_id;   /* ID of parent task */
   ompt_frame_t *parent_task_frame; /* frame data of parent task */
   ompt_parallel_id_t parallel_id;  /* ID of parallel region */
   uint32_t requested_team_size;    /* requested number of threads */
   void *parallel_function;         /* pointer to outlined function */
-} ompt_target_new_parallel_t;
+} ompt_record_new_parallel_t;
 
 typedef struct
 {
   ompt_task_id_t task_id; /* ID of task */
-} ompt_target_task_t;
+} ompt_record_task_t;
 
 typedef struct
 {
   ompt_task_id_t suspended_task_id; /* ID of suspended task */
   ompt_task_id_t resumed_task_id;   /* ID of resumed task */
-} ompt_target_task_switch_t;
+} ompt_record_task_switch_t;
 
 typedef struct
 {
@@ -2714,7 +2727,7 @@ typedef struct
   ompt_frame_t *parent_task_frame; /* frame data of parent task */
   ompt_task_id_t new_task_id;      /* ID of created task */
   void *new_task_function;         /* pointer to outlined function */
-} ompt_target_new_task_t;
+} ompt_record_new_task_t;
 
 /* buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
