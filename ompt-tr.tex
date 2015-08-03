@@ -506,7 +506,7 @@ This callback has type signature \verb|ompt_new_target_task_callback_t|.
 The OpenMP runtime invokes this callback after a target task completes but 
 before the thread resumes execution of another task. The callback executes in 
 the context of an arbitrary task on the thread that completed the target task.
-This callback has type signature \verb|ompt_target_callback_t|. 
+This callback has type signature \verb|ompt_task_calltack_t|. The task id passed to the callback belongs to the target task.
 
 \end{description}
 
@@ -1007,19 +1007,19 @@ before the task
 
   The OpenMP runtime invokes this callback after a target update construct finishes execution but before resuming execution of the parent task.
   The callback executes in the context of the task that encountered the target update construct.
-  This callback has type signature \verb|ompt_target_callback_t|.
+  This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the target task.
 
 \item \verb|ompt_event_target_data_map_begin|
 
   The OpenMP runtime invokes this callback just before a variable is mapped to or from the device data environment.
-  The callback executes in the context of the task that invokes the data mapping.
+  The callback executes in the context of the encountering task, which executes the region.
   This callback has type signature \verb|ompt_new_data_map_callback_t|.
 
 \item \verb|ompt_event_target_data_map_end|
 
   The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment.
-  The callback executes in the context of the task that invokes the data mapping.
-  This callback has type signature \verb|ompt_data_map_callback_t|.
+  The callback executes in the context of the the encountering task, which executes the region.
+  This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the encountering task.
 
 % \item \verb|ompt_event_target_invoke_begin|
 % 
@@ -1811,13 +1811,14 @@ Target devices typically operate asynchronously with respect to a host. It may n
 All functions in the target device tracing control API described in this section are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool will obtain pointers to these functions.
 
 
+
 \subsection{Enabling and Disabling Tracing for OMPT Record Types}
 \label{sec:trace-event}
 Function \verb|ompt_record_set_t| allows a tool to enable or disable the recording of one or more types of trace record types:
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API void ompt_record_set(
+OMPT_API int ompt_record_set(
   int device_id,                     /* target device id          */
   ompt_bool enable,                  /* enable or disable         */
   ompt_record_type_t rtype           /* a record type             */
@@ -1828,6 +1829,23 @@ The argument \verb|device_id| indicates the target device whose performance moni
 Actual record types are specified using positive numbers; an \verb|rtype| of  0 indicates that all record types will be enabled or disabled.
 If the function \verb|ompt_record_set_t| is called for a device for which recording is currently active, its behavior is undefined.
 
+\begin{table}
+\centering
+\begin{tabular}{|l|l|}
+\hline
+return code & meaning \\\hline
+0 & error\\\hline
+1 & event may occur but no tracing is possible\\\hline
+2 & event will never occur in runtime\\\hline
+3 & event may occur and will be traced  when convenient\\\hline
+4 & event may occur and will always be traced if event occurs\\\hline
+\end{tabular}
+\caption{Meaning of return codes for {\tt ompt\_record\_set} and  {\tt ompt\_record\_native\_set}.}
+\label{table:record_set}
+\end{table}
+
+Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_record_set|.
+
 
 \subsection{Enabling and Disabling Tracing for Native Record Types}
 \label{sec:trace-event-native}
@@ -1835,7 +1853,7 @@ Function \verb|ompt_record_native_set_t| allows a tool to enable or disable the 
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API void ompt_record_native_set(
+OMPT_API int ompt_record_native_set(
   int device_id,                     /* target device id                */
   ompt_bool enable,                  /* enable or disable               */
   void *info                         /* info to enable a native  event  */
@@ -1843,9 +1861,9 @@ OMPT_API void ompt_record_native_set(
 \end{verbatim}
 \end{quote}
 The argument \verb|device_id| indicates the target device whose performance monitoring may be altered by invoking this function. The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| may be enabled or disabled by this invocation.
-Actual record types are specified using positive numbers; an \verb|rtype| of  0 indicates that all record types will be enabled or disabled.
-If the function \verb|ompt_record_set_t| is called for a device for which recording is currently active, its behavior is undefined.
+Actual record types are specified using positive numbers; an \verb|rtype| of  0 indicates that all record types will be enabled or disabled. If the function \verb|ompt_record_native_set| is called for a device for which recording is currently active, its behavior is undefined.
 
+Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_record_native_set|.
 
 \subsection{Start and Stop Recording Traces}
 \label{sec:start-stop-recording}
@@ -1951,7 +1969,7 @@ This function returns a pointer that may point into the record buffer, or it may
 \subsection{Processing Native Trace Records in a Buffer}
 \label{sec:native-record-data}
 
-To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with the buffer:
+To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with buffer:
 \begin{quote}
 \begin{verbatim}
 OMPT_API void *ompt_record_native_get(
@@ -2208,8 +2226,7 @@ Other values of command  and modifier appropriate for any tool will be tool spec
 Developers of many trace-based tools would prefer to have  \verb|ompt_event_implicit_task_begin| and \verb|ompt_event_implicit_task_end| included in the mandatory events. As we acquire more experience with OMPT implementations, perhaps these events will be added to the set of mandatory events, if they don't add much overhead to OpenMP runtime implementations when OMPT is disabled.
 
 \subsection{Future Enhancements}
-As OpenMP runtime developers acquire more experience with OpenMP 4.0 features, we  envision two types of enhancements to OMPT.
-First, the current definition of OMPT doesn't provide support for tracking or interrogating task dependences.  Second, the current definition of OMPT doesn't provide support for tracking data movement and computation for devices. Eventually, we expect to extend OMPT with support to expose information about dependences to tools, track data movement to/from devices, and track computation on devices.
+The current definition of OMPT doesn't provide support for tracking or interrogating task dependences.  We expect to extend OMPT with support to expose information about dependences to tools.
 
 \section*{Acknowledgments}
 
@@ -2400,16 +2417,16 @@ This section describes miscellaneous enumeration types used by tool callbacks.
 
 \begin{verbatim}
 typedef enum ompt_thread_type_e {
-  ompt_thread_initial = 1,
-  ompt_thread_worker  = 2,
-  ompt_thread_other   = 3
+  ompt_thread_initial  = 1,
+  ompt_thread_worker   = 2,
+  ompt_thread_other    = 3
 } ompt_thread_type_t;
 
 typedef enum  ompt_task_type_e {
-  ompt_task_serial = 1,
-  ompt_task_implicit  = 2,
+  ompt_task_serial     = 1,
+  ompt_task_implicit   = 2,
   ompt_task_explicit   = 3,
-  ompt_task_target = 4
+  ompt_task_target     = 4
 } ompt_task_type_t;
 
 typedef enum {
@@ -2496,8 +2513,8 @@ typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
 typedef void (*ompt_new_target_task_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
-  ompt_task_id_t target_task_id,    /* ID of target task           */
-  ompt_target_device_id_t device_id,/* ID of the device             */
+  ompt_task_id_t target_task_id,    /* ID of target task            */
+  int device_id,                    /* ID of the device             */
   void *target_task_function        /* pointer to outlined function */
 );
 
@@ -2505,25 +2522,17 @@ typedef void (*ompt_new_target_task_callback_t) (
 typedef void (*ompt_new_target_data_callback_t) ( 
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_task_id_t target_task_id,    /* ID of target task           */
-  ompt_target_device_id_t device_id,/* ID of the device             */
+  int device_id,                    /* ID of the device             */
   void *target_data_function        /* pointer to outlined function */
-);
-
-typedef void (*ompt_target_callback_t) ( /* target* region end events */
-  ompt_task_id_t target_task_id     /* ID of task                   */
 );
 
 typedef void (*ompt_new_data_map_callback_t) (
   ompt_task_id_t task_id,           /* ID of encountering task      */
-  ompt_target_device_id_t device_id,/* ID of the device             */
+  int device_id,                    /* ID of the device             */
   ompt_target_sync_t sync_type,     /* sync or async data mapping   */
   ompt_data_map_t map_type,         /* type of mapping / motion     */
   ompt_data_size_t bytes            /* amount of mapped bytes       */
   void *target_map_function         /* pointer to outlined function */
-);
-
-typedef void (*ompt_data_map_callback_t) (
-  ompt_task_id_t task_id            /* ID of task performing map    */
 );
 
 /* program */						   
