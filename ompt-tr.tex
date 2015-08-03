@@ -2394,26 +2394,11 @@ typedef enum {
 \end{verbatim}
 
 \clearpage  
-\subsection{Type Signatures for Tool Callbacks}
-\label{appendix:ompt-types:callbacks}
-This section describes type signatures for all  callbacks that a tool may register to receive from an OpenMP runtime. Section~\ref{sec:events} describes OpenMP runtime events and registration of
-callback functions with these type signatures.
+\subsection{Miscellaneous Enumeration Types}
+\label{appendix:ompt-types:misc}
+This section describes miscellaneous enumeration types used by tool callbacks.
 
 \begin{verbatim}
-/* initialization */
-typedef void (*ompt_interface_fn_t)(
-  void
-  );
-
-typedef ompt_interface_fn_t (*ompt_function_lookup_t)(
-  const char *entry_point           /* entry point to look up       */
-  );
-
-/* threads */	
-typedef void (*ompt_thread_callback_t) ( /* for thread              */	   
-  ompt_thread_id_t thread_id        /* ID of thread                 */
-  );
-  
 typedef enum ompt_thread_type_e {
   ompt_thread_initial = 1,
   ompt_thread_worker  = 2,
@@ -2428,51 +2413,73 @@ typedef enum  ompt_task_type_e {
 } ompt_task_type_t;
 
 typedef enum {
-    ompt_invoker_program = 0,         /* program invokes master task  */
-    ompt_invoker_runtime = 1          /* runtime invokes master task  */
+  ompt_invoker_program = 0,         /* program invokes master task  */
+  ompt_invoker_runtime = 1          /* runtime invokes master task  */
 } ompt_invoker_t;
+\end{verbatim}
+
+\clearpage  
+\subsection{Type Signatures for Tool Callbacks}
+\label{appendix:ompt-types:callbacks}
+This section describes type signatures for all  callbacks that a tool may register to receive from an OpenMP runtime. Section~\ref{sec:events} describes OpenMP runtime events and registration of
+callback functions with these type signatures.
+
+\begin{verbatim}
+/* initialization */
+typedef void (*ompt_interface_fn_t)(
+  void
+);
+
+typedef ompt_interface_fn_t (*ompt_function_lookup_t)(
+  const char *entry_point           /* entry point to look up       */
+);
+
+/* threads */	
+typedef void (*ompt_thread_callback_t) ( /* for thread              */	   
+  ompt_thread_id_t thread_id        /* ID of thread                 */
+);
 
 typedef void (*ompt_thread_type_callback_t) ( /* for thread         */
   ompt_thread_type_t thread_type,   /* type of thread               */	   
   ompt_thread_id_t thread_id        /* ID of thread                 */
-  );
+);
 	
 typedef void (*ompt_wait_callback_t) ( /* for wait                  */
   ompt_wait_id_t wait_id            /* wait ID                      */
-  );
+);
 	
 /* parallel & workshares */
 typedef void (*ompt_parallel_callback_t) ( /* for inside parallel   */			   
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id           /* ID of task                   */
-  );								    
+);								    
 
 typedef void (*ompt_new_workshare_callback_t) ( /* for workshares   */			   
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id,          /* ID of task                   */
   void *workshare_function          /* pointer to outlined function */
-  );								    
+);								    
 							   	    
 typedef void (*ompt_new_parallel_callback_t) ( /* for new parallel  */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_frame_t *parent_task_frame,  /* frame data of parent task    */
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   uint32_t requested_team_size,     /* requested number of threads  */
-  void *parallel_function,           /* pointer to outlined function */
-   ompt_invoker_t invoker            /* who invokes master task?    */
-  );
+  void *parallel_function,          /* pointer to outlined function */
+  ompt_invoker_t invoker            /* who invokes master task?     */
+);
   
 typedef void (*ompt_end_parallel_callback_t) (
-    ompt_parallel_id_t parallel_id,   /* id of parallel region       */
-    ompt_task_id_t task_id,           /* id of task                  */
-    ompt_invoker_t invoker            /* who invokes master task?    */
+  ompt_parallel_id_t parallel_id,   /* id of parallel region        */
+  ompt_task_id_t task_id,           /* id of task                   */
+  ompt_invoker_t invoker            /* who invokes master task?     */
 );
 								    
 		
 /* tasks */						    						    
 typedef void (*ompt_task_callback_t) ( /* for tasks                 */	   
   ompt_task_id_t  task_id           /* ID of task                   */
-  );
+);
 
 typedef void (*ompt_task_switch_callback_t) ( /* for task switch    */			   
   ompt_task_id_t suspended_task_id, /* ID of suspended task         */ 
@@ -2484,55 +2491,50 @@ typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
   ompt_task_id_t new_task_id,       /* ID of created task           */
   void *new_task_function           /* pointer to outlined function */
-  );
+);
   
 typedef void (*ompt_new_target_task_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
-  ompt_task_id_t new_task_id,       /* ID of created task           */
-  ompt_target_id_t target_id,       /* ID of target* region         */
+  ompt_task_id_t target_task_id,    /* ID of target task           */
   ompt_target_device_id_t device_id,/* ID of the device             */
-  void *new_target_task_function    /* pointer to outlined function */
-  );
+  void *target_task_function        /* pointer to outlined function */
+);
 
 /* target device */
 typedef void (*ompt_new_target_data_callback_t) ( 
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_target_id_t target_id,       /* ID of target* region         */
+  ompt_task_id_t target_task_id,    /* ID of target task           */
   ompt_target_device_id_t device_id,/* ID of the device             */
-  void* target_function             /* pointer to outlined function */
+  void *target_data_function        /* pointer to outlined function */
 );
 
 typedef void (*ompt_target_callback_t) ( /* target* region end events */
-  ompt_task_id_t task_id,           /* ID of task                   */
-  ompt_target_id_t target_id        /* ID of target* region         */
+  ompt_task_id_t target_task_id     /* ID of task                   */
 );
 
 typedef void (*ompt_new_data_map_callback_t) (
-  ompt_task_id_t task_id,           /* ID of task                   */
-  ompt_target_id_t target_id,       /* ID of target* region         */
-  ompt_data_map_id_t data_map_id,   /* ID of data map operation     */
+  ompt_task_id_t task_id,           /* ID of encountering task      */
   ompt_target_device_id_t device_id,/* ID of the device             */
-  ompt_target_sync_t sync_type,     /* synchronous or asynchronus data mapping*/
-  ompt_data_map_t map_type,         /* type of the data mapping / motion */
+  ompt_target_sync_t sync_type,     /* sync or async data mapping   */
+  ompt_data_map_t map_type,         /* type of mapping / motion     */
   ompt_data_size_t bytes            /* amount of mapped bytes       */
+  void *target_map_function         /* pointer to outlined function */
 );
 
-typedef void (*ompt_data_map_callback_t) ( /* end of a data map operation */
-  ompt_task_id_t task_id,           /* ID of task                   */
-  ompt_target_id_t target_id,       /* ID of target* region         */
-  ompt_data_map_id_t data_map_id    /* ID of data map operation     */
+typedef void (*ompt_data_map_callback_t) (
+  ompt_task_id_t task_id            /* ID of task performing map    */
 );
 
 /* program */						   
 typedef void (*ompt_control_callback_t) ( /* for control            */	   
   uint64_t command,                 /* command of control call      */
   uint64_t modifier                 /* modifier of control call     */
-  );
+);
   
 typedef void (*ompt_callback_t)(    /* for shutdown                 */	
   void
-  ); 
+); 
 \end{verbatim}
 
 \paragraph{Placeholder callback signature.} The type \verb|ompt_callback_t| is also a placeholder signature used only by the tool callback registration interface. 
@@ -2572,10 +2574,6 @@ OMPT_API ompt_state_t ompt_get_state( /* get the state for a thread             
   ompt_wait_id_t *wait_id        /* for wait states: identify what awaited               */
 );
 
-OMPT_API void * ompt_get_idle_frame(  /* identify the idle frame (if any) for a thread   */
-  void
-);
-
 /* parallel region inquiry */
 OMPT_API ompt_parallel_id_t ompt_get_parallel_id( /* identify a parallel region          */
   int ancestor_level /*  how many levels the ancestor is removed from the current region */
@@ -2586,8 +2584,8 @@ OMPT_API int ompt_get_parallel_team_size( /* query # threads in a parallel regio
 );
 
 /* task inquiry */
-OMPT_API ompt_task_id_t ompt_get_task_info(  /* identify a task                           */
-  int depth,                     /*  how many levels removed from the current task        */
+OMPT_API ompt_task_id_t ompt_get_task_info(  /* identify a task                          */
+  int depth,                     /*  how many levels removed from the current task       */
   ompt_task_type_t *type /* return the type of the task */
 );
 
@@ -2601,24 +2599,10 @@ OMPT_API ompt_target_device_id_t ompt_get_target_device_id( /* return active tar
   void
 );
 
-OMPT_API ompt_target_id_t ompt_get_target_id( /* return current target region ID         */
-  void
-);
-
 OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return current time
                                                                    stamp of a device     */
   omp_target_device_id_t id      /* the target device of interest                        */
 );
-
-OMPT_API void ompt_target_map(   /* maps data to or from a target device                 */
-  void* dst,                     /* destination address                                  */
-  void* src,                     /* source address                                       */
-  ompt_target_device_id_t id,    /* the ID of the target device                          */
-  ompt_data_map_t map_type,      /* mapping to or from a target devixe                   */
-  ompt_target_sync_t sync_type,  /* blocking or non-blocking data mapping                */
-  ompt_data_size_t bytes         /* number of bytes to be mapped                         */
-);
-
 \end{verbatim}
 
 \clearpage  
