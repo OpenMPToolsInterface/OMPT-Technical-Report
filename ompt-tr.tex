@@ -124,6 +124,8 @@ Section~\ref{sec:app-facing} describes the tool control interface available to a
 Section~\ref{sec:notes} concludes with a few notes about potential future enhancements.
 Appendix~\ref{appendix:ompt-types} provides a definition of the complete OMPT interface in C.
 Appendix~\ref{app:frame} illustrates the information that OMPT maintains about call stacks and the use of OMPT API routines to inspect it; this support enables tools to associate code executed in OpenMP parallel regions with  application-level calling contexts. 
+Appendix~\ref{app:registration} outlines some considerations that impact the design of the interface for tool registration.
+
 
 \begin{comment}
 Next, a pair of appendices describe OMPD---a shared library plugin for debuggers that supports third-party inspection and control of a target process. OMPD enables a debugger to leverage functionality provided by OMPT to enable it to provide a user-level view of call stacks for threads.
@@ -503,7 +505,7 @@ This callback has type signature \verb|ompt_new_target_task_callback_t|.
 \sloppy
 The OpenMP runtime invokes this callback after a target task completes but 
 before the thread resumes execution of another task. The callback executes in 
-the context of an arbitrary task on the thread that completed the explicit task.
+the context of an arbitrary task on the thread that completed the target task.
 This callback has type signature \verb|ompt_target_callback_t|. 
 
 \end{description}
@@ -533,7 +535,7 @@ The OpenMP runtime system invokes this callback before it shuts down the
  runtime system.  This callback enables a tool to clean up its
  state and record or report its measurement data, as appropriate. A runtime may later restart and reinitialize the tool by
 calling the tool initializer
-function (\verb|ompt_initialize|, described in Section~\ref{sec:init}) again.
+function (\verb|ompt_tool|, described in Section~\ref{sec:init}) again.
  This callback has type signature \verb|ompt_callback_t|. 
 
 
@@ -1430,7 +1432,7 @@ In the presence of nested parallelism, a tool may observe a sequence of \verb|om
  the tools. 
  All functions in the inquiry API are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool will obtain pointers to these inquiry functions.
  {\em All inquiry functions are async signal safe.} 
- Note that it is unsafe to call OpenMP Execution Library Routines within an OMPT callback because doing so may cause deadlock. 
+ Note that it is unsafe to call OpenMP Execution Environment Routines within an OMPT callback because doing so may cause deadlock. 
  Specifically, since OpenMP Execution Library Routines are not guaranteed to be async signal safe, they might acquire a lock that may already be held when an OMPT callback is involved.
  
  \subsection{Enumerate States Supported by an OpenMP Runtime (Mandatory)}
@@ -1728,7 +1730,8 @@ Function \verb|ompt_get_device_info|, whose type signature is shown below, is us
 OMPT_API int ompt_get_device_info(
   int device_id, 
   const char **type, 
-  ompt_function_lookup_t *lookup);
+  ompt_function_lookup_t *lookup
+);
 \end{verbatim}
 \end{quote}
 If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. If a non-null pointer is passed for \verb|type|, the runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of such a device. If a non-null pointer is passed for \verb|lookup|, the runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The names of any device-specific API functions and their type signatures are outside the scope of the OMPT specification. 
@@ -1766,7 +1769,7 @@ OMPT_API ompt_target_device_time_t ompt_get_target_device_time(
 % The host and target device typically run different operating system instances and distinct instances of an OpenMP runtime. 
 This inquiry function can be used
 to acquire information that can be used to align time stamps from the target device with time
-stamps from the host.
+stamps from the host or other devices.
 
 \begin{comment}
 The function \verb|ompt_target_map| maps the specified number of bytes
@@ -1789,7 +1792,7 @@ OMPT_API void ompt_target_map(
 \end{quote}
 \end{comment}
 
-\section{Target Device Tracing (optional)}
+\section{Target Device Tracing (Optional)}
 \label{sec:target-device-records}
 
 Target devices typically operate asynchronously with respect to a host. It may not be practical or possible to make event callbacks on a target device. These characteristics motivate a design of a performance monitoring interface for target devices where: 
@@ -1830,7 +1833,7 @@ To start recording a tool needs to register a \emph{buffer request} callback tha
 The \emph{buffer request} callback has the following type signature:
 \begin{quote}
 \begin{verbatim}
-typedef void ompt_buffer_request_callback_t (
+typedef void (*ompt_buffer_request_callback_t) (
   int device_id,
   ompt_buffer_t **buffer,
   size_t *bytes
@@ -1847,7 +1850,7 @@ A buffer request callback  may set \verb|*bytes| to 0 if it does not want to pro
 The \emph{buffer complete} callback has the following type signature: 
 \begin{quote}
 \begin{verbatim}
-typedef void ompt_buffer_complete_callback_t (
+typedef void (*ompt_buffer_complete_callback_t) (
   int device_id, 
   ompt_buffer_t *buffer,
   size_t bytes,
@@ -1924,73 +1927,108 @@ This function returns a pointer that may point into the record buffer, or it may
 
 \textcolor{red}{TODO: Define a function for native event processing: OMPT\_API void *ompt\_record\_get\_native ?}
 
-\section{Initializing OMPT Support for Tools}
+\section{Initializing OMPT Support for Tools (Mandatory)}
 \label{sec:enabling}
 
-{\color{red} This needs to change to define \verb|omp_tool| as the only visible function in the tool. \verb|omp_tool|  will be called before an OpenMP runtime initializes itself to determine if a tool is present and active. If a tool is present and active, it will return a pointer to the tool's \verb|ompt_initialize|  function. \verb|ompt_initialize|  will be called as before at the end of initialization. The advantage of having a pair of functions is that by calling \verb|omp_tool|  before initialization, a runtime can determine that OMPT support must be set up during initialization.}
+Section~\ref{sec:env} describes how an OpenMP runtime uses the value of the {\em omp-tool-var} ICV to decide whether or not an OpenMP runtime will try to register a performance tool prior to runtime initialization.
+%  and how one may use the \verb|OMP_TOOL|  environment variable to control this process. 
+% An OpenMP runtime must maintain information to support a performance tool only if a performance tool registers itself with the runtime.
+Section~\ref{sec:init} explains how a registered performance tool initializes itself.
 
-If no tool registers itself with an OpenMP runtime during initialization (as described below in Section~\ref{sec:init}), the runtime need not maintain information to support tools 
-and the runtime's behavior is undefined if a tool invokes any API inquiry functions.
-Section~\ref{sec:init} describes tool initialization. 
-Section~\ref{sec:env} describes environment variable control over tool initialization. 
-% Section~\ref{sec:debug-init} describes a tool initialization API for a debugger. 
+\subsection{Tool Registration}
+\label{sec:env}
 
-\subsection{Initialization of a Tool}
-\label{sec:init}
 
-A tool must register itself with an OpenMP runtime system and then specify callbacks for events of interest. 
-Section~\ref{sec:initialize} describes the initializer for a  tool. 
-Section~\ref{sec:callback} describes registration of callbacks for OMPT events.
-\subsubsection{Initializer (Mandatory)}
-\label{sec:initialize} 
+%*** Jim: This environment variable seems confusing. (Maybe it's OK, but the default to true seems odd)
 
-A   tool  must register itself with an OpenMP runtime by providing an implementation of the following function:
+The  \verb|OMP_TOOL| environment variable sets the {\em omp-tool-var} ICV, which controls whether or not an OpenMP 
+runtime will try to register a performance tool or not. The value assigned to \verb|OMP_TOOL| is case insensitive and may have leading and trailing white space.  The value ofthis environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb|OMP_TOOL| is set to any value other than \verb|enabled| or \verb|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \verb|OMP_TOOL| and the program's execution will terminate. If \verb|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \verb|enabled|.
 
+
+
+ \begin{table}
+\begin{center}
+\begin{tabular}{|c|p{4.5in}|}
+\hline
+ {\em omp-tool-var} value & action \\\hline
+enabled & The OpenMP runtime will call  \verb|ompt_tool| before initializing itself.   \\\hline
+disabled & The OpenMP runtime will not call  \verb|ompt_tool|, regardless of whether a tool is present or not.  \\\hline
+%*** Jim: Is ompd_enable wrong? Or is this a vestige of the OMPD interface that is still required?
+% false & OMPT is disabled unless explicitly turned on by call to \verb|ompd_enable|.  \\\hline
+
+% always &  \verb|ompt_initialize| is  called after the OpenMP runtime initializes itself. Regardless of the return value from \verb|ompt_initialize|, the OpenMP runtime must maintain runtime state information for each OpenMP thread and  appropriately respond to  any invocations of the inquiry API.  \\\hline
+\end{tabular}
+\end{center}
+\caption{OpenMP runtime responses to settings of the {\em omp-tool-var} ICV.}
+\label{table:env-var}
+\end{table}
+
+% The return value expected from \verb|ompt_tool| is a pointer to the tool's implementation of  \verb|ompt_initialize|. If the returned pointer is non-NULL, the OpenMP runtime will invoke the tool's \verb|ompt_initialize|, maintain runtime state information for each OpenMP thread,  respond to any invocations of the inquiry API, and invoke any registered callbacks when appropriate.
+
+\sloppy
+Table~\ref{table:env-var} describes the action that an OpenMP runtime system will take in response to possible values of {\em omp-tool-var}.
+If the value of {\em omp-tool-var}  is  \verb|enabled|, the runtime will attempt to register  a performance tool by calling the function \verb|ompt_tool| before performing  runtime initialization. The signature for  \verb|ompt_tool|  is shown below:
 \begin{quote}
 \begin{verbatim}
 extern "C" {
-  int ompt_initialize(ompt_function_lookup_t lookup, 
-                      const char *runtime_version, 
-                      unsigned int ompt_version);
-}
+  ompt_initialize_fn_t ompt_tool();
+};
 \end{verbatim}
 \end{quote}
+If an OpenMP runtime calls \verb|ompt_tool| but no tool-provided implementation of \verb|ompt_tool| is present,
+a weak version of \verb|ompt_tool| provided by the runtime  will return NULL. If a tool-provided version of \verb|ompt_tool| is present, it may return NULL indicating that the tool declines to register itself with the runtime; otherwise, the tool  may register itself with the runtime by returning a non-NULL pointer to a function with type signature \verb|ompt_initialize_fn_t|. The type signature for \verb|ompt_initialize_fn_t| is described in Section~\ref{sec:init}. 
+Since only one tool-provided definition of \verb|ompt_tool| will be seen by an OpenMP runtime, only one tool may register itself. 
+If a tool-supplied implementation of \verb|ompt_tool| returns a non-NULL initializer, the OpenMP runtime system will maintain state information for each OpenMP thread and will perform OMPT event callbacks registered during tool initialization. 
 
-\noindent
-Since only one tool-provided definition of \verb|ompt_initialize| will be seen by an OpenMP runtime, only one tool
-may register itself. Ordinarily, \verb|ompt_initialize| will  be invoked by an OpenMP runtime immediately after the runtime initializes itself. 
+After a process fork, if OpenMP is re-initialized in the child process,
+the OpenMP runtime system in the child process will call  \verb|ompt_tool| under the same conditions as it would for any process. 
 
-The function  \verb|ompt_initialize| serves two roles. First,  if a tool wants to receive notification of OpenMP events (described in Section~\ref{sec:events}), the tool's implementation of \verb|ompt_initialize| must register a callback for every event of interest using \verb|ompt_set_callback| (described in Section~\ref{sec:callback}). 
-Second, the return value of  \verb|ompt_initialize|  indicates whether or not a tool wants the OpenMP runtime system to maintain thread runtime state information for the tool and invoke any callback functions that the tool may have registered. 
+\subsection{Tool Initialization}
+\label{sec:init}
 
-A tool-supplied implementation may return 0 or 1.  If \verb|ompt_initialize|  returns 0, the OpenMP runtime {\em need not} maintain any state information for OpenMP threads and {\em will not} perform any callbacks.
-If a tool-supplied implementation of \verb|ompt_initialize| returns 1, the OpenMP runtime system will maintain state information for each OpenMP thread and will perform any callbacks that have been registered by the tool. 
+When an OpenMP runtime system receives a non-NULL pointer to a tool initializer function with signature \verb|ompt_initialize_fn_t| as the result of a call to  \verb|ompt_tool|, the runtime will call the tool initializer immediately after the runtime fully initializes itself. The initializer must be called before beginning execution of any OpenMP construct or completing any execution environment  routine invocation.  The signature for the tool initializer callback is shown below:
 
-The first argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to OMPT interface functions.
+\begin{quote}
+\begin{verbatim}
+typedef void (*ompt_initialize_fn_t) (
+  const char *runtime_version, 
+  unsigned int ompt_version,
+  ompt_function_lookup_t lookup 
+);
+\end{verbatim}
+\end{quote}
+The first argument to  \verb|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime system implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime system implementation. Knowing exactly what version of an OpenMP runtime system is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
+
+The second argument \verb|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
+The version of OMPT described by this document is known as version 2.
+
+The two principal duties of a tool initializer are looking up pointers to all OMPT API functions that the tool uses and to registering tool callbacks.  These two operations are described below.
+
+\paragraph{Looking up functions in the OMPT API.} The third argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to OMPT interface functions.
 The type signature for  \verb|lookup| is:
 
 \begin{quote}
 \begin{verbatim}
-ompt_interface_fn_t lookup(const char *interface_function_name);
+typedef ompt_interface_fn_t (*ompt_function_lookup_t)(
+  const char *interface_function_name
+);
 \end{verbatim}
 \end{quote}
 
 \noindent
-The \verb|lookup| callback is necessary because when the OpenMP runtime is dynamically loaded by a shared library, the OMPT interface functions provided by the library may be invisible to a preloaded tool. Within a tool, one uses \verb|lookup| to obtain function pointers to each OMPT inquiry function. For example, to obtain a function pointer to \verb|ompt_get_thread_id|, one invokes \verb|lookup| as follows:
+The \verb|lookup| callback is necessary because when the OpenMP runtime is dynamically loaded by a shared library, the OMPT interface functions provided by the library may not be visible to a preloaded tool. Within a tool, one uses \verb|lookup| to obtain function pointers to each function in the OMPT API.  All functions in the OMPT API are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. 
+
+Below, we show how to use the \verb|lookup| function to obtain a pointer to the OMPT API function \verb|ompt_get_thread_id|:
 
 \begin{quote}
 \begin{verbatim}
-ompt_interface_fn_t ompt_get_thread_id_ptr = lookup("ompt_get_thread_id");
+ompt_interface_fn_t ompt_get_thread_id_fn = lookup("ompt_get_thread_id");
 \end{verbatim}
 \end{quote}
+Other functions in the OMPT API may be looked up analogously.
+If a named function is not available in an OpenMP runtime's implementation of OMPT, \verb|lookup| will return NULL.
 
-\noindent
-If a named callback is not available in an OpenMP runtime's implementation of OMPT, \verb|lookup| will return NULL.
 
-The second argument to  \verb|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime system implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime system implementation. Knowing exactly what version of an OpenMP runtime system is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
-
-The third argument \verb|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
-The version of OMPT described by this document is known as version 1.
 
 
 % the notion of clean point registration is meaningless without a debugger standard -- johnmc 10/25/2013
@@ -1998,16 +2036,12 @@ The version of OMPT described by this document is known as version 1.
 An OpenMP runtime system {\em may} allow registration of a tool after initialization of the OpenMP runtime at a {\em clean point}. An OpenMP runtime is said to be at a clean point when no pthread is inside a parallel region. An OpenMP runtime system will not necessarily attempt to register a tool at a clean point unless a debugger has previously called \verb|ompd_enable(true)| as described in Section~\ref{sec:debug-init}.
 \end{comment}
 
-After a process fork, if OpenMP is re-initialized in the child process,
-the OpenMP runtime system in the child process will call  \verb|ompt_initialize| under the same conditions as it would for any process. 
 
 
-\subsubsection{Callback Registration (Mandatory)}
-\label{sec:callback}
-Tools register callbacks to receive notification of various events that occur as an OpenMP program executes.
- All functions in the registration API are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:initialize} describes how a tool will obtain pointers to these functions.
-A tool uses
- \verb|ompt_set_callback| to register callback functions. 
+
+
+\paragraph{Registering Callbacks.} 
+Tools register callbacks to receive notification of various events that occur as an OpenMP program executes using the OMPT API function \verb|ompt_set_callback|. The signature for this function is shown below{
  
 \begin{quote}
 \begin{verbatim}
@@ -2036,7 +2070,7 @@ return code & meaning \\\hline
 
 \noindent
 The  function \verb|ompt_set_callback|  may only be called within the implementation of 
- \verb|ompt_initialize| provided by a  tool, as described in Section~\ref{sec:initialize}
+ \verb|ompt_initialize|.
 The possible return codes for \verb|ompt_set_callback| and their meaning is shown in Table~\ref{table:set_rc}. 
 Registration of supported callbacks may fail if this function is
 called outside  \verb|ompt_initialize|.
@@ -2044,7 +2078,7 @@ The \verb|ompt_callback_t| type for a callback does not reflect the actual signa
  to avoid the need to declare a separate registration function for each actual callback type.
 
 
-The  function \verb|ompt_get_callback| may be called at any time to inspect whether a callback has been registered or not. 
+The  OMPT API function \verb|ompt_get_callback| may be called at any time to inspect whether a callback has been registered or not. 
 
 \begin{quote}
 \begin{verbatim}
@@ -2060,80 +2094,6 @@ If a callback has been registered,  \verb|ompt_get_callback|  will return 1 and 
 
 
 
-\subsection{An Environment Variable for Tool Initialization (Mandatory)}
-\label{sec:env}
-
-%*** Jim: This environment variable seems confusing. (Maybe it's OK, but the default to true seems odd)
-The environment variable \verb|OMP_TOOL| is used to control tool initialization.
-Table~\ref{table:env-var} describes actions an OpenMP runtime system takes in response to various values of  \verb|OMP_TOOL|.
-When \verb|OMP_TOOL| is not defined, its default value is \verb|enabled|.
-
-
- \begin{table}
-\begin{center}
-\begin{tabular}{|c|p{4.5in}|}
-\hline
-\verb|OMP_TOOL| value & action \\\hline
-disabled & OMPT is disabled regardless of whether a tool is present or not. The OpenMP runtime is not required to maintain any information about thread state nor support any invocation of the inquiry API. \\\hline
-%*** Jim: Is ompd_enable wrong? Or is this a vestige of the OMPD interface that is still required?
-% false & OMPT is disabled unless explicitly turned on by call to \verb|ompd_enable|.  \\\hline
-enabled &  \verb|ompt_initialize| is  called after the OpenMP runtime initializes itself. If the return value from \verb|ompt_initialize| is 1, the OpenMP runtime must maintain runtime state information for each OpenMP thread,  respond to any invocations of the inquiry API, and invoke any registered callbacks when appropriate.  \\\hline
-% always &  \verb|ompt_initialize| is  called after the OpenMP runtime initializes itself. Regardless of the return value from \verb|ompt_initialize|, the OpenMP runtime must maintain runtime state information for each OpenMP thread and  appropriately respond to  any invocations of the inquiry API.  \\\hline
-\end{tabular}
-\end{center}
-\caption{OpenMP runtime responses to settings of the {\tt OMP\_TOOL} environment variable.}
-\label{table:env-var}
-\end{table}
-
-\sloppy
-An OpenMP runtime will attempt to initialize  a tool  if  \verb|OMP_TOOL| is  \verb|enabled|. If the OpenMP runtime calls \verb|ompt_initialize|, but no tool-provided version of \verb|ompt_initialize| is present,
-a weak version of \verb|ompt_initialize| provided by the OpenMP runtime  will return 0. 
-% In that case, the runtime need not maintain any information about thread state  and may supply trivial answers to any invocations of the inquiry API.
-If a tool-provided version of \verb|ompt_initialize| is present, it may return 0 or 1. Only if \verb|ompt_initialize|  returns 1 is  the OpenMP runtime obligated to perform state tracking and invoke any event callbacks registered by \verb|ompt_initialize|.
-% are meaningful answers required from everything without ompt_initialize == 1?
-% and return meaningful answers from OMPT API calls will return meaningful answers.
-
-If \verb|OMP_TOOL| is set to \verb|disabled|, 
-the OpenMP runtime will not call  \verb|ompt_initialize| to attempt tool initialization, maintain any thread state information for tools, or make any tool callbacks.
-
-% If \verb|OMP_TOOL| is set to \verb|disabled|, all OMPT tool support for state tracking or callbacks will be disabled unless enabled by a debugger.
-Behavior for any other values of \verb|OMP_TOOL| is unspecified.
-
-\subsection{Implementation Considerations for Tool  Initialization}
-
-Unless {\tt OMP\_TOOL=disabled}, if a tool-supplied implementation of \verb|ompt_initialize| is present in the address space of a process and visible to the OpenMP runtime system, 
-the tool-supplied \verb|ompt_initialize|  must be called immediately after the OpenMP runtime system initializes itself. 
-
-Whether a tool-supplied implementation of  \verb|ompt_initialize| defined as a strong global symbol is visible to an OpenMP runtime system when present in the address space of a process is non-obvious. There are several scenarios to consider.
-A tool-supplied version of \verb|ompt_initialize|  is visible to an OpenMP runtime system if:
-\begin{itemize}
-\item The tool implementation of  \verb|ompt_initialize| is statically-linked into an executable. Such an implementation of  \verb|ompt_initialize| will  be visible to an OpenMP runtime system regardless of whether the runtime is statically linked into the executable or dynamically-linked into a shared library. 
-\item An implementation of  \verb|ompt_initialize|  is in a tool's shared library, which we denote ${\cal L}_T$. Such an implementation of  \verb|ompt_initialize| will  be visible to an OpenMP runtime system in a library ${\cal L}_O$ as long as (a) ${\cal L}_O$ is a shared library itself, and (b) ${\cal L}_T$ is in the dynamic library search path for ${\cal L}_O$ ahead of ${\cal L}_O$  itself. ${\cal L}_T$ is guaranteed to be on ${\cal L}_O$'s dynamic library search path ahead of ${\cal L}_O$ {\em iff}
-\begin{itemize}
-\item ${\cal L}_T$ is pre-loaded by the dynamic linker into the address space of a process before execution begins.\footnote{While Linux and some other operating systems support library pre-loading, library pre-loading is not universally available.}
-\item ${\cal L}_T$ and ${\cal L}_O$ are both direct shared library dependences of a load module\footnote{A load module is an application binary or a  shared library.}  and ${\cal L}_T$ appeared ahead of ${\cal L}_O$ when linking the load module.
-\item A load module dynamically loads ${\cal L}_T$  ahead of a shared library ${\cal L}_X$ (because ${\cal L}_T$  preceded ${\cal L}_X$ when the load module was linked), and  ${\cal L}_X$ directly or indirectly loads ${\cal L}_O$.
-\end{itemize}
-\end{itemize}
-
-The recommended approach for handling initialization in the OpenMP runtime system for a particular target platform depends on the features supported by  compiler, linker, and operating system.
-
-\paragraph{Compiler and linker support weak symbols.}
-On systems  where the compiler and linker support weak symbols, it is convenient for the 
-OpenMP runtime system to define \verb|ompt_initialize| as a weak global symbol  that returns 0. Definition of \verb|ompt_initialize| as a weak global symbol is suitable for use in either a static or dynamic library. If a shared-library implementation of an OpenMP library ${\cal L}_O$ defines \verb|ompt_initialize| as a weak global symbol, then a tool library  ${\cal L}_T$ must be appear on the dynamic library search path ahead of ${\cal L}_O$ for the tool version of  \verb|ompt_initialize| to be invoked.
-
-\paragraph{Compiler and linker don't support weak symbols.}
-
-On systems that don't support weak symbols, different implementation strategies are needed for static and dynamic linking. 
-
-For a static library implementation of an  OpenMP runtime library,  the library can provide a stub version of \verb|ompt_initialize|  in a separate object file. In this case, the linker will include the OpenMP library's stub implementation of  \verb|ompt_initialize| only if no tool supplied version is already present when the OpenMP runtime library is used to resolve undefined symbols.
-
-An OpenMP implementation used as a dynamic library can define \verb|ompt_initialize| as a global symbol. The version in the OpenMP library would  be invoked only if no tool-supplied implementation of  \verb|ompt_initialize| is statically linked in the executable or  a tool library that appears before the OpenMP runtime library in the dynamic library search path during execution.
-
-\paragraph{A Binary rewriter alters a load module that provides an OpenMP runtime system.}
-Regardless of whether a system supports weak symbols or not, one can use a static or dynamic binary rewriting tool to modify an 
-OpenMP runtime system present in an executable or a shared library to invoke a tool-supplied version of 
-a version of \verb|ompt_initialize| rather than the default implementation of \verb|ompt_initialize| present in the OpenMP runtime.
 
 
 
@@ -2428,7 +2388,7 @@ typedef enum  ompt_task_type_e {
   ompt_task_serial = 1,
   ompt_task_implicit  = 2,
   ompt_task_explicit   = 3,
-  opt_task_target = 4
+  ompt_task_target = 4
 } ompt_task_type_t;
 
 typedef enum {
@@ -2795,6 +2755,42 @@ to frame f11. Execution of application code for parallel region ``c''  begins on
 
 
 Below the stack for each thread in Figure~\ref{fig:frame}  is set of \verb|ompt_get_task_frame| inquiries that are assumed to be made on each thread for the stack state shown. Each call indicates an ancestor level with an argument and shows the ID of the \verb|ompt_frame_t| record returned. Note that thread 2 has task frame information for three levels of tasks, whereas thread 1 has only two.
+
+\clearpage
+\section{Implementation Considerations for Tool  Registration}
+\label{app:registration} 
+
+Whether a tool-supplied implementation of  \verb|ompt_tool| defined as a strong global symbol is visible to an OpenMP runtime system when present in the address space of a process is non-obvious. There are several scenarios to consider.
+A tool-supplied version of \verb|ompt_tool|  is visible to an OpenMP runtime system if:
+\begin{itemize}
+\item The tool implementation of  \verb|ompt_tool| is statically-linked into an executable. Such an implementation of  \verb|ompt_tool| will  be visible to an OpenMP runtime system regardless of whether the runtime is statically linked into the executable or dynamically-linked into a shared library. 
+\item An implementation of  \verb|ompt_tool|  is in a tool's shared library, which we denote ${\cal L}_T$. Such an implementation of  \verb|ompt_tool| will  be visible to an OpenMP runtime system in a library ${\cal L}_O$ as long as (a) ${\cal L}_O$ is a shared library itself, and (b) ${\cal L}_T$ is in the dynamic library search path for ${\cal L}_O$ ahead of ${\cal L}_O$  itself. ${\cal L}_T$ is guaranteed to be on ${\cal L}_O$'s dynamic library search path ahead of ${\cal L}_O$ {\em iff}
+\begin{itemize}
+\item ${\cal L}_T$ is pre-loaded by the dynamic linker into the address space of a process before execution begins.\footnote{While Linux and some other operating systems support library pre-loading, library pre-loading is not universally available.}
+\item ${\cal L}_T$ and ${\cal L}_O$ are both direct shared library dependences of a load module\footnote{A load module is an application binary or a  shared library.}  and ${\cal L}_T$ appeared ahead of ${\cal L}_O$ when linking the load module.
+\item A load module dynamically loads ${\cal L}_T$  ahead of a shared library ${\cal L}_X$ (because ${\cal L}_T$  preceded ${\cal L}_X$ when the load module was linked), and  ${\cal L}_X$ directly or indirectly loads ${\cal L}_O$.
+\end{itemize}
+\end{itemize}
+
+The recommended approach for handling registration in the OpenMP runtime system for a particular target platform depends on the features supported by  compiler, linker, and operating system.
+
+\paragraph{Compiler and linker support weak symbols.}
+On systems  where the compiler and linker support weak symbols, it is convenient for the 
+OpenMP runtime system to define \verb|ompt_tool| as a weak global symbol  that returns 0. Definition of \verb|ompt_tool| as a weak global symbol is suitable for use in either a static or dynamic library. If a shared-library implementation of an OpenMP library ${\cal L}_O$ defines \verb|ompt_tool| as a weak global symbol, then a tool library  ${\cal L}_T$ must be appear on the dynamic library search path ahead of ${\cal L}_O$ for the tool version of  \verb|ompt_tool| to be invoked.
+
+\paragraph{Compiler and linker don't support weak symbols.}
+
+On systems that don't support weak symbols, different implementation strategies are needed for static and dynamic linking. 
+
+For a static library implementation of an  OpenMP runtime library,  the library can provide a stub version of \verb|ompt_tool|  in a separate object file. In this case, the linker will include the OpenMP library's stub implementation of  \verb|ompt_tool| only if no tool supplied version is already present when the OpenMP runtime library is used to resolve undefined symbols.
+
+An OpenMP implementation used as a dynamic library can define \verb|ompt_tool| as a global symbol. The version in the OpenMP library would  be invoked only if no tool-supplied implementation of  \verb|ompt_tool| is statically linked in the executable or  a tool library that appears before the OpenMP runtime library in the dynamic library search path during execution.
+
+\paragraph{A Binary rewriter alters a load module that provides an OpenMP runtime system.}
+Regardless of whether a system supports weak symbols or not, one can use a static or dynamic binary rewriting tool to modify an 
+OpenMP runtime system present in an executable or a shared library to invoke a tool-supplied version of 
+a version of \verb|ompt_tool| rather than the default implementation of \verb|ompt_tool| present in the OpenMP runtime.
+
 
 
 \end{document}
