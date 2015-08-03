@@ -1840,7 +1840,7 @@ return code & meaning \\\hline
 3 & event may occur and will be traced  when convenient\\\hline
 4 & event may occur and will always be traced if event occurs\\\hline
 \end{tabular}
-\caption{Meaning of return codes for {\tt ompt\_record\_set} and  {\tt ompt\_record\_native\_set}.}
+\caption{Meaning of return codes for {\tt ompt\_record\_set}.}
 \label{table:record_set}
 \end{table}
 
@@ -1856,14 +1856,13 @@ Function \verb|ompt_record_native_set_t| allows a tool to enable or disable the 
 OMPT_API int ompt_record_native_set(
   int device_id,                     /* target device id                */
   ompt_bool enable,                  /* enable or disable               */
-  void *info                         /* info to enable a native  event  */
+  void *info,                        /* info for native event           */
+  void **status                      /* status of request               */
 );
 \end{verbatim}
 \end{quote}
-The argument \verb|device_id| indicates the target device whose performance monitoring may be altered by invoking this function. The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| may be enabled or disabled by this invocation.
-Actual record types are specified using positive numbers; an \verb|rtype| of  0 indicates that all record types will be enabled or disabled. If the function \verb|ompt_record_native_set| is called for a device for which recording is currently active, its behavior is undefined.
-
-Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_record_native_set|.
+The argument \verb|device_id| indicates the target device whose performance monitoring may be altered by invoking this function. The boolean \verb|enable| indicates whether recording of events may be enabled or disabled by this invocation.
+Native trace records are specified by an \verb|info| structure whose layout is device dependent. Information about a request is returned from \verb|ompt_record_native_set| by setting the \verb|status| to point to a record containing whatever information is appropriate for the  request / device pair. If the function \verb|ompt_record_native_set| is called for a device for which recording is currently active, its behavior is undefined.
 
 \subsection{Start and Stop Recording Traces}
 \label{sec:start-stop-recording}
@@ -1980,6 +1979,43 @@ OMPT_API void *ompt_record_native_get(
 \end{quote}
 The pointer returned  may point into the trace buffer, or it may point into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. 
 A subsequent call to \verb|ompt_record_native_get| may overwrite the contents of the fields in the record returned by a prior invocation.
+
+Function  \verb|ompt_record_native_get_kind| can be used to classify if a a native trace record represents an event or an informational record.
+\begin{quote}
+\begin{verbatim}
+OMPT_API ompt_record_native_kind_t ompt_record_native_get_kind(
+  void *native_record 
+);
+\end{verbatim}
+\end{quote}
+Native records can be of kind \verb|ompt_record_native_kind_info| or \verb|ompt_record_native_kind_event|. Knowing whether a record is informational or represents an event could help a tool determine how to present the record.
+
+Function  \verb|ompt_record_native_get_type| can be used to extract a meaningful name from a native trace record indicating its type.
+\begin{quote}
+\begin{verbatim}
+OMPT_API const char *ompt_record_native_get_type(
+  void *native_record 
+);
+\end{verbatim}
+\end{quote}
+
+Function  \verb|ompt_record_native_get_time| can be used to attempt to extract a time from a native trace record. If no time is available, the return value will be 0.
+\begin{quote}
+\begin{verbatim}
+OMPT_API uint64_t ompt_record_native_get_time(
+  void *native_record
+);
+\end{verbatim}
+\end{quote}
+
+Function  \verb|ompt_record_native_get_hwid| can be used to attempt to extract a hardware ID from a native trace record. A hardware ID is intended to identify the hardware (e.g., core, thread) that generated the trace record. The meaning of a hardware ID is defined by each kind of device. If no hardware id is available, the return value will be -1.
+\begin{quote}
+\begin{verbatim}
+OMPT_API int ompt_record_native_get_hwid(
+  void *native_record
+);
+\end{verbatim}
+\end{quote}
 
 \section{Initializing OMPT Support for Tools (Mandatory)}
 \label{sec:enabling}
@@ -2632,7 +2668,7 @@ typedef enum {
 typedef struct
 {
   ompt_event_t type;                           /* event type */
-  uint64_t time;                               /* time, when the record occured */
+  uint64_t time;                               /* time, when the record occurred */
   ompt_thread_id_t thread_id;                  /* thread identifier for this record */
   union
   {
