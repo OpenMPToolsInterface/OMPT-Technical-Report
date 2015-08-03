@@ -840,6 +840,21 @@ just after an initial
 
 \end{description}
 
+\descheader{Task Dependence Tracking}
+
+\begin{description}
+\sloppy
+
+\item \verb|ompt_event_task_dependence|
+
+  The OpenMP runtime invokes this callback for every dependence that blocks execution of a task (\verb|succ_task_id|) because a predecessor task (\verb|pred_task_id|) has not yet completed  execution and  generated inputs required by \verb|succ_task_id|.
+  This callback will always occur after creating a successor task (i.e. \verb|ompt_task_begin|) and before the successor task begins execution (i.e. its first \verb|ompt_task_switch|).
+  This callback may occur even if the predecessor task has been descheduled (signaled by an \verb|ompt_task_switch| event) or if it has finished (signaled by an \verb|ompt_task_end| event).
+  Note that this callback will not report information regarding dependences that have already been satisfied by completed tasks.
+  This callback has type signature \verb|ompt_new_task_dependence_callback_t|.
+
+\end{description}
+
 \descheader{Lock Creation and Destruction}
 
 \begin{description}
@@ -1486,7 +1501,7 @@ current thread.
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_thread_id_t ompt_get_thread_id();
+OMPT_API ompt_thread_id_t ompt_get_thread_id(void);
 \end{verbatim}
 \end{quote}
  
@@ -1519,7 +1534,7 @@ where the thread would await new work.
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API void *ompt_get_idle_frame();
+OMPT_API void *ompt_get_idle_frame(void);
 \end{verbatim}
 \end{quote}
  
@@ -1719,7 +1734,7 @@ The recommended format for the version string is
 Function \verb|ompt_get_num_devices| returns the number of visible devices:
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_get_num_devices();
+OMPT_API int ompt_get_num_devices(void);
 \end{verbatim}
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, the return value is undefined. {\it This function is async signal safe.}
@@ -1740,7 +1755,7 @@ If \verb|device_id| refers to a valid device, the function will return 0 indicat
 Function \verb|ompt_get_target_id| returns the ID of the current target region:
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_target_id_t ompt_get_target_id();
+OMPT_API ompt_target_id_t ompt_get_target_id(void);
 \end{verbatim}
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in a target region, then it will return a value of 0. {\it This function is async signal safe.}
@@ -1749,7 +1764,7 @@ This inquiry function is only supported on the host. If the inquiry function is 
 Function \verb|ompt_get_target_device_id| returns the device identifier for the active target device:
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_get_target_device_id();
+OMPT_API int ompt_get_target_device_id(void);
 \end{verbatim}
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, then it will return a value of -1. {\it This function is async signal safe.}
@@ -2032,7 +2047,9 @@ Section~\ref{sec:init} explains how a registered performance tool initializes it
 %*** Jim: This environment variable seems confusing. (Maybe it's OK, but the default to true seems odd)
 
 The  \verb|OMP_TOOL| environment variable sets the {\em omp-tool-var} ICV, which controls whether or not an OpenMP 
-runtime will try to register a performance tool or not. The value assigned to \verb|OMP_TOOL| is case insensitive and may have leading and trailing white space.  The value ofthis environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb|OMP_TOOL| is set to any value other than \verb|enabled| or \verb|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \verb|OMP_TOOL| and the program's execution will terminate. If \verb|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \verb|enabled|.
+runtime will try to register a performance tool or not. The value assigned to \verb|OMP_TOOL| is 
+case insensitive and may have leading and trailing white space.  The value of
+this environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb|OMP_TOOL| is set to any value other than \verb|enabled| or \verb|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \verb|OMP_TOOL| and the program's execution will terminate. If \verb|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \verb|enabled|.
 
 
 
@@ -2061,7 +2078,7 @@ If the value of {\em omp-tool-var}  is  \verb|enabled|, the runtime will attempt
 \begin{quote}
 \begin{verbatim}
 extern "C" {
-  ompt_initialize_fn_t ompt_tool();
+  ompt_initialize_fn_t ompt_tool(void);
 };
 \end{verbatim}
 \end{quote}
@@ -2261,9 +2278,6 @@ Other values of command  and modifier appropriate for any tool will be tool spec
 \label{sec:notes}
 Developers of many trace-based tools would prefer to have  \verb|ompt_event_implicit_task_begin| and \verb|ompt_event_implicit_task_end| included in the mandatory events. As we acquire more experience with OMPT implementations, perhaps these events will be added to the set of mandatory events, if they don't add much overhead to OpenMP runtime implementations when OMPT is disabled.
 
-\subsection{Future Enhancements}
-The current definition of OMPT doesn't provide support for tracking or interrogating task dependences.  We expect to extend OMPT with support to expose information about dependences to tools.
-
 \section*{Acknowledgments}
 
 The authors would like to acknowledge Scott Parker at Argonne National Laboratory (ANL) for 
@@ -2425,24 +2439,23 @@ typedef enum {
   ompt_event_destroy_lock             = 59, /* lock destruction           */
   ompt_event_destroy_nest_lock        = 60, /* nest lock destruction      */
 			            	 			         
-  ompt_event_flush                    = 61  /* after executing flush      */ 
+  ompt_event_flush                    = 61, /* after executing flush      */ 
 
-  ompt_event_target_begin             = 62  /* target begin               */
-  ompt_event_target_end               = 63  /* target end                 */                                                                                                                \
+  /*--- Mandatory Events (target task events) ---*/  
+  ompt_event_target_task_begin        = 62, /* target begin               */
+  ompt_event_target_task_end          = 63, /* target end                 */
 
-  ompt_event_target_data_begin        = 64  /* target data begin          */
-  ompt_event_target_data_end          = 65  /* target data end            */
+  /*--- Optional Events (target data, update, map) ---*/  
+  ompt_event_target_data_begin        = 64, /* target data begin          */
+  ompt_event_target_data_end          = 65, /* target data end            */
 
-  ompt_event_target_update_begin      = 66  /* target update begin        */
-  ompt_event_target_update_end        = 67  /* target update end          */
+  ompt_event_target_update_begin      = 66, /* target update begin        */
+  ompt_event_target_update_end        = 67, /* target update end          */
 
-  ompt_event_data_map_begin           = 68  /* before data mapping        */
-  ompt_event_data_map_end             = 69  /* after data mapping         */
-
-  ompt_event_target_invoke_begin      = 70  /* before invoking the target */ 
-  ompt_event_target_invoke_end        = 71  /* after invoking the target  */
-
-
+  ompt_event_data_map_begin           = 68, /* before data mapping        */
+  ompt_event_data_map_end             = 69, /* after data mapping         */
+  
+  ompt_event_task_dependence          = 70  /* new task-dependence        */
 } ompt_event_t;
 \end{verbatim}
 
@@ -2465,10 +2478,16 @@ typedef enum  ompt_task_type_e {
   ompt_task_target     = 4
 } ompt_task_type_t;
 
-typedef enum {
+typedef enum ompt_invoker_e {
   ompt_invoker_program = 0,         /* program invokes master task  */
   ompt_invoker_runtime = 1          /* runtime invokes master task  */
 } ompt_invoker_t;
+
+typedef enum ompt_task_dependence_type_e {
+   ompt_dependence_in    = 1,
+   ompt_dependence_out   = 2,
+   ompt_dependence_inout = 3
+} ompt_dependence_type_t;
 \end{verbatim}
 
 \clearpage  
@@ -2571,6 +2590,15 @@ typedef void (*ompt_new_data_map_callback_t) (
   void *target_map_function         /* pointer to outlined function */
 );
 
+/* task dependences */
+typedef void (*ompt_new_task_dependence_callback_t) (
+                                     /* new dependence tracking     */
+  ompt_task_id_t pred_task_id,       /* ID of predecessor task      */
+  ompt_task_id_t succ_task_id,       /* ID of successor task        */
+  ompt_task_dependence_type_t type,  /* Type of dependence          */
+  void *data                         /* Pointer to related data     */
+);
+        
 /* program */						   
 typedef void (*ompt_control_callback_t) ( /* for control            */	   
   uint64_t command,                 /* command of control call      */
@@ -2771,24 +2799,25 @@ OMPT_API void ompt_target_register_buffer_callbacks(
 %   ompt_get_host_time_t host_time_function,
 
 \clearpage
-\subsection{Initialization} 
+\subsection{Registration and Initialization} 
 \label{sec:app:init}
 
 \noindent
-{\color{red} Note: This section needs updating to indicate \verb|omp_tool| is the only global tool symbol needed by OMPT. Also mention the OMPT state placeholder functions here.}
-
-The function \verb|ompt_initialize| is the only global symbol associated with OMPT. To use OMPT, a tool overlays an implementation of \verb|ompt_initialize| in place of the default one provided by the OMPT implementation. This interface is described in greater detail in Section~\ref{sec:initialize}.
+Function \verb|ompt_tool| is the only global symbol associated with OMPT. To use OMPT, a tool overlays an implementation of \verb|ompt_tool| in place of the default one provided by an OpenMP runtime system. Use of this interface is described in Section~\ref{sec:env}.
 \begin{verbatim}
 extern "C" {
-  int ompt_initialize(
-    ompt_function_lookup_t lookup,  /* function to look up OMPT API routines by name */
-    const char *runtime_version,    /* OpenMP runtime version string                 */
-    unsigned int ompt_version       /* integer that identifies the OMPT revision     */
-  );
-}
-
+  ompt_initialize_fn_t ompt_tool(void);
+};
 \end{verbatim}
+Function \verb|ompt_tool| returns a pointer to a tool initializer, whose type signature is described below. Use of this interface is described in Section~\ref{sec:init}.
 
+\begin{verbatim}
+typedef void (*ompt_initialize_fn_t) (
+  const char *runtime_version, 
+  unsigned int ompt_version,
+  ompt_function_lookup_t lookup 
+);
+\end{verbatim}
 
 
 
