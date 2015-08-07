@@ -2586,6 +2586,7 @@ typedef void (*ompt_new_target_data_callback_t) (
 
 typedef void (*ompt_new_data_map_callback_t) (
   ompt_task_id_t task_id,           /* ID of encountering task      */
+  ompt_data_map_id_t data_map_id,   /* ID of data map operation*/
   int device_id,                    /* ID of the device             */
   ompt_target_sync_t sync_type,     /* sync or async data mapping   */
   ompt_data_map_t map_type,         /* type of mapping / motion     */
