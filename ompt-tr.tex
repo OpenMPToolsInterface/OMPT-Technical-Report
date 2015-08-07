@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised August 4, 2015}
+\date{Revised August 7, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -433,6 +433,8 @@ This callback has type signature \verb|ompt_thread_type_callback_t|.
 
 \descheader{Parallel Regions}
 
+{\color{red} How should we handle degenerate regions (e.g, a nested region where nesting is disabled, or a region that will execute serially because there are no other threads available to help execute it?}
+
 \begin{description}
 
 \item \verb|ompt_event_parallel_begin|
@@ -444,6 +446,8 @@ but before any implicit task starts to execute the
 parallel region's work. The callback executes in the context of the task that encountered the parallel construct.
 This callback has type signature \verb|ompt_new_parallel_callback_t|, and includes a parameter that indicates the number of threads requested by the user. 
 A tool may use this value as an upper bound on the number of threads that will participate in the team.
+
+
 
 \item \verb|ompt_event_parallel_end|
 
@@ -848,13 +852,11 @@ just after an initial
 \begin{description}
 \sloppy
 
-\item \verb|ompt_event_task_dependence|
+\item \verb|ompt_event_task_dependences|
 
-  The OpenMP runtime invokes this callback for every dependence that blocks execution of a task (\verb|succ_task_id|) because a predecessor task (\verb|pred_task_id|) has not yet completed  execution and  generated inputs required by \verb|succ_task_id|.
-  This callback will always occur after creating a successor task (i.e. \verb|ompt_task_begin|) and before the successor task begins execution (i.e. its first \verb|ompt_task_switch|).
-  This callback may occur even if the predecessor task has been descheduled (signaled by an \verb|ompt_task_switch| event) or if it has finished (signaled by an \verb|ompt_task_end| event).
-  Note that this callback will not report information regarding dependences that have already been satisfied by completed tasks.
-  This callback has type signature \verb|ompt_new_task_dependence_callback_t|.
+  The OpenMP runtime invokes this callback after an explicit task is created, 
+  but before the task begins execution to announce its dependences on data objects. 
+  This callback has type signature \verb|ompt_task_dependences_callback_t|.
 
 \end{description}
 
@@ -1005,12 +1007,15 @@ before the task
 \item \verb|ompt_event_target_data_begin|
 
   The OpenMP runtime invokes this callback after a task encounters a target data construct but before the new data environment is created.
-  The callback executes in the context of the task that encountered the target data construct.
-  This callback has type signature \verb|ompt_new_target_data_callback_t|.
-
+  The callback executes in the context of the task that encountered the target data construct. 
+  This callback has type signature \verb|ompt_new_target_data_callback_t|. Arguments to the callback include the ID of the encountering task, the ID of the 
+  target device, and the return address of the invocation of a runtime routine to perform the target data operation, which relates the operation to 
+  the user program. 
+  
 \item \verb|ompt_event_target_data_end|
 
-  The OpenMP runtime invokes this callback after a target data region finishes execution but before resuming execution of the parent task.
+  The OpenMP runtime invokes this callback when the task that encountered the target data region is 
+  done with the target data region. 
   The callback executes in the context of the task that encountered the target data construct.
   This callback has type signature \verb|ompt_target_callback_t|.
 
@@ -1023,7 +1028,8 @@ before the task
 
 \item \verb|ompt_event_target_update_end|
 
-  The OpenMP runtime invokes this callback after a target update construct finishes execution but before resuming execution of the parent task.
+  The OpenMP runtime invokes this callback when the task that encountered the target update construct is 
+  done with the target update region. Since updates  may execute asynchronously on a device, the callback may occur before the update  is complete.
   The callback executes in the context of the task that encountered the target update construct.
   This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the target task.
 
@@ -1035,9 +1041,16 @@ before the task
 
 \item \verb|ompt_event_target_data_map_end|
 
-  The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment.
+  The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment. Since the map operation may execute asynchronously on the device, the map end callback on the host may occur before the map operation is complete.
   The callback executes in the context of the the encountering task, which executes the region.
   This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the encountering task.
+  
+  \item \verb|ompt_event_target_data_map_done|
+
+  The OpenMP runtime invokes this callback after a variable map operation finishes execution on a device.
+   Since the map operation may execute asynchronously on the device, the map done callback may occur after the map end.
+  The callback executes in the context of an arbitrary task, which may not be the one that initiated the map operation.
+  This callback has type signature \verb|ompt_data_map_done_callback_t|.
 
 % \item \verb|ompt_event_target_invoke_begin|
 % 
@@ -1415,8 +1428,8 @@ The structure's lifetime begins when a task region is
 \begin{tabular}{|l|p{2in}|p{2in}|}
 \hline
 exit / reenter 	& reenter = null										& reenter = defined \\\hline\hline
-exit = null		& case 1)  initial task in user code case 2) explicit task that is created but not yet scheduled &  task in runtime because of a parallel region or a task creation \\\hline
-exit = defined 	& non-initial task in (or soon to be in) user code							& non-initial task in runtime because of a parallel region or a task creation\\\hline
+exit = null		& case 1)  initial task in user code case 2) task that is created but not yet scheduled &  task in runtime to create a parallel region or explicit task  \\\hline
+exit = defined 	& non-initial task in (or soon to be in) user code							& non-initial task in runtime to create a parallel region or explicit task\\\hline
 \end{tabular}
 \end{center}
 \caption{Meaning of various values for {\tt exit\_runtime\_frame} and {\tt reenter\_runtime\_frame}.}
@@ -1998,42 +2011,16 @@ OMPT_API void *ompt_record_native_get(
 The pointer returned  may point into the trace buffer, or it may point into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. 
 A subsequent call to \verb|ompt_record_native_get| may overwrite the contents of the fields in the record returned by a prior invocation.
 
-Function  \verb|ompt_record_native_get_kind| can be used to classify if a a native trace record represents an event or an informational record.
+Function  \verb|ompt_record_native_get_abstract| can be used by a tool to acquire basic information about a native record and handle it even without full support for  native records from the associated device.
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_native_kind_t ompt_record_native_get_kind(
+OMPT_API ompt_record_native_abstract_t ompt_record_native_get_abstract(
   void *native_record 
 );
-\end{verbatim}
-\end{quote}
-Native records can be of kind \verb|ompt_record_native_kind_info| or \verb|ompt_record_native_kind_event|. Knowing whether a record is informational or represents an event could help a tool determine how to present the record.
 
-Function  \verb|ompt_record_native_get_type| can be used to extract a meaningful name from a native trace record indicating its type.
-\begin{quote}
-\begin{verbatim}
-OMPT_API const char *ompt_record_native_get_type(
-  void *native_record 
-);
 \end{verbatim}
 \end{quote}
-
-Function  \verb|ompt_record_native_get_time| can be used to attempt to extract a time from a native trace record. If no time is available, the return value will be 0.
-\begin{quote}
-\begin{verbatim}
-OMPT_API uint64_t ompt_record_native_get_time(
-  void *native_record
-);
-\end{verbatim}
-\end{quote}
-
-Function  \verb|ompt_record_native_get_hwid| can be used to attempt to extract a hardware ID from a native trace record. A hardware ID is intended to identify the hardware (e.g., core, thread) that generated the trace record. The meaning of a hardware ID is defined by each kind of device. If no hardware id is available, the return value will be -1.
-\begin{quote}
-\begin{verbatim}
-OMPT_API int ompt_record_native_get_hwid(
-  void *native_record
-);
-\end{verbatim}
-\end{quote}
+A  \verb|ompt_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|kind| field indicates whether the record is informational (\verb|ompt_record_native_kind_info|) or represents an event (\verb|ompt_record_native_kind_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field is a character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. Thehardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The precise semantics of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. Finally, \verb|target_task_id| indicates the target task with which this record is associated. If there is no associated target task or the associated target task is unknown,  \verb|target_task_id|  will be  0.
 
 \section{Initializing OMPT Support for Tools (Mandatory)}
 \label{sec:enabling}
@@ -2463,7 +2450,7 @@ typedef enum {
 \end{verbatim}
 
 \clearpage  
-\subsection{Miscellaneous Enumeration Types}
+\subsection{Miscellaneous Type Definitions}
 \label{appendix:ompt-types:misc}
 This section describes miscellaneous enumeration types used by tool callbacks.
 
@@ -2487,10 +2474,26 @@ typedef enum ompt_invoker_e {
 } ompt_invoker_t;
 
 typedef enum ompt_task_dependence_type_e {
-   ompt_dependence_in    = 1,
-   ompt_dependence_out   = 2,
-   ompt_dependence_inout = 3
-} ompt_dependence_type_t;
+  ompt_task_dependence_type_out   = 1,
+  ompt_task_dependence_type_in    = 2,
+  ompt_task_dependence_type_inout = 3
+} ompt_task_dependence_type_t;
+
+typedef struct {
+    void *variable_addr;
+     size_t len;
+     ompt_dependence_type_t  type;
+} ompt_task_dependence_t
+
+typedef enum ompt_target_map_flag_e {
+  ompt_target_map_flag_sync = 1,
+  ompt_target_map_flag_to = 2
+} ompt_target_map_flag_t;
+
+#define ompt_hwid_none (-1)
+#define ompt_time_none (~0ULL)
+
+
 \end{verbatim}
 
 \clearpage  
@@ -2578,29 +2581,35 @@ typedef void (*ompt_new_target_task_callback_t) (
 
 /* target device */
 typedef void (*ompt_new_target_data_callback_t) ( 
-  ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_task_id_t target_task_id,    /* ID of target task           */
+  ompt_task_id_t task_id,           /* ID of encountering task      */
   int device_id,                    /* ID of the device             */
-  void *target_data_function        /* pointer to outlined function */
+  void *target_data_code            /* ptr to target data code      */
 );
 
 typedef void (*ompt_new_data_map_callback_t) (
   ompt_task_id_t task_id,           /* ID of encountering task      */
-  ompt_data_map_id_t data_map_id,   /* ID of data map operation*/
   int device_id,                    /* ID of the device             */
-  ompt_target_sync_t sync_type,     /* sync or async data mapping   */
-  ompt_data_map_t map_type,         /* type of mapping / motion     */
-  ompt_data_size_t bytes            /* amount of mapped bytes       */
-  void *target_map_function         /* pointer to outlined function */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags,           /* sync/async, to/from          */
+  void *target_map_code             /* ptr to target map code       */
+);
+
+typedef void (*ompt_data_map_done_callback_t) (
+  ompt_task_id_t task_id,           /* ID of current task         */
+  int device_id,                    /* ID of the device             */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags            /* sync/async, to/from          */
 );
 
 /* task dependences */
-typedef void (*ompt_new_task_dependence_callback_t) (
-                                     /* new dependence tracking     */
-  ompt_task_id_t pred_task_id,       /* ID of predecessor task      */
-  ompt_task_id_t succ_task_id,       /* ID of successor task        */
-  ompt_task_dependence_type_t type,  /* Type of dependence          */
-  void *data                         /* Pointer to related data     */
+typedef void (*ompt_task_dependences_callback_t) (                                   
+  ompt_task_id_t task_id,           /* ID of task with dependences  */
+  ompt_task_dependence_t *deps,     /* vector of task dependences   */
+  int ndeps                         /* number of dependences        */
 );
         
 /* program */						   
@@ -2686,6 +2695,8 @@ OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return curren
 \subsection{Record Types and Buffer Management}
 \label{appendix:ompt-records}
 
+{\color{red} TODO: add target records, as they are allowed on a target device}
+
 \begin{verbatim}
 /* OMPT record type */
 typedef enum {
@@ -2693,15 +2704,23 @@ typedef enum {
   ompt_record_native,
   ompt_record_notype
 } ompt_record_type_t; 
-\end{verbatim}
 
-\begin{verbatim}
+/* native record abstract */
+typedef struct ompt_record_native_abstract_s {
+  ompt_record_native_kind_t kind,
+  const char *type;
+  uint64_t start_time;
+  unit65_t end_time;
+  uint32_t hwid;
+  ompt_task_id_t target_task_id;
+} ompt_record_native_abstract_t;
+
 /* OMPT record */
-typedef struct
-{
+typedef struct ompt_record_s {
   ompt_event_t type;                           /* event type */
   uint64_t time;                               /* time, when the record occurred */
   ompt_thread_id_t thread_id;                  /* thread identifier for this record */
+  ompt_task_id_t target_task_id    /* link back to its associated target task */
   union
   {
     ompt_record_thread_t;                      /* for thread          */
@@ -2773,8 +2792,6 @@ typedef struct
   ompt_task_id_t new_task_id;      /* ID of created task */
   void *new_task_function;         /* pointer to outlined function */
 } ompt_record_new_task_t;
-
-TODO: add target records, as they are allowed on a target device
 
 /* buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
