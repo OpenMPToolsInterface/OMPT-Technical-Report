@@ -1017,7 +1017,7 @@ before the task
   The OpenMP runtime invokes this callback when the task that encountered the target data region is 
   done with the target data region. 
   The callback executes in the context of the task that encountered the target data construct.
-  This callback has type signature \verb|ompt_target_callback_t|.
+  This callback has type signature \verb|ompt_task_callback_t|.
 
 \item \verb|ompt_event_target_update_begin|
 
@@ -2442,8 +2442,8 @@ typedef enum {
   ompt_event_target_update_begin      = 66, /* target update begin        */
   ompt_event_target_update_end        = 67, /* target update end          */
 
-  ompt_event_data_map_begin           = 68, /* before data mapping        */
-  ompt_event_data_map_end             = 69, /* after data mapping         */
+  ompt_event_target_data_map_begin    = 68, /* before data mapping        */
+  ompt_event_target_data_map_end      = 69, /* after data mapping         */
   
   ompt_event_task_dependence          = 70  /* new task-dependence        */
 } ompt_event_t;
@@ -2632,8 +2632,6 @@ typedef void (*ompt_callback_t)(    /* for shutdown                 */
 ); 
 \end{verbatim}
 
-{\color{red} Tim: Isnt ompt\_target\_callback\_t missing? (s. data end event)}
-
 \paragraph{Placeholder callback signature.} The type \verb|ompt_callback_t| is also a placeholder signature used only by the tool callback registration interface. 
 Only one callback registration function is defined and it expects that the callback supplied will be cast into type \verb|ompt_callback_t|, regardless of its actual type signature. This approach avoids the need for a separate registration routine for each unique tool callback signature. 
 
@@ -2691,22 +2689,19 @@ OMPT_API ompt_frame_t *ompt_get_task_frame(
 );
 
 /* target device inquiry */
-OMPT_API ompt_target_device_id_t ompt_get_target_device_id( /* return active target
-                                                               device ID                 */
+OMPT_API int ompt_get_target_device_id(         /* return active target device ID        */
   void
 );
 
 OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return current time
                                                                    stamp of a device     */
-  omp_target_device_id_t id      /* the target device of interest                        */
+  int device_id                  /* the target device of interest                        */
 );
 \end{verbatim}
 
 \clearpage  
 \subsection{Record Types and Buffer Management}
 \label{appendix:ompt-records}
-
-{\color{red} TODO: add missing target record (ompt\_record\_target\_t)?}
 
 \begin{verbatim}
 /* OMPT record type */
@@ -2857,7 +2852,7 @@ typedef void (*ompt_target_buffer_request_callback_t) (
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
   ompt_target_event_t* buffer,   /* pointer to buffer with target event records */
-  omp_target_device_id_t device, /* target device */
+  int device_id,                 /* target device */
   size_t valid_bytes             /* number of valid bytes in the buffer */
 );
 
