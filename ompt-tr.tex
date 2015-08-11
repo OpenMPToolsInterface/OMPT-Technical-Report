@@ -2480,14 +2480,23 @@ typedef enum ompt_task_dependence_type_e {
 } ompt_task_dependence_type_t;
 
 typedef struct {
-    void *variable_addr;
-     size_t len;
-     ompt_dependence_type_t  type;
+  void *variable_addr;
+  size_t len;
+  ompt_dependence_type_t type;
 } ompt_task_dependence_t
 
 typedef enum ompt_target_map_flag_e {
-  ompt_target_map_flag_sync = 1,
-  ompt_target_map_flag_to = 2
+  // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
+  ompt_target_map_flag_sync    = 1,
+  ompt_target_map_flag_to      = 2
+  ompt_target_map_flag_tofrom  = 3, 
+  ompt_target_map_flag_alloc   = 4,
+  ompt_target_map_flag_release = 5, 
+  ompt_target_map_flag_delete  = 6, 
+  // 7 unused
+
+  // one bit for synchronous/asynchronous
+  ompt_target_map_flag_sync = 8,   
 } ompt_target_map_flag_t;
 
 #define ompt_hwid_none (-1)
@@ -2597,7 +2606,7 @@ typedef void (*ompt_new_data_map_callback_t) (
 );
 
 typedef void (*ompt_data_map_done_callback_t) (
-  ompt_task_id_t task_id,           /* ID of current task         */
+  ompt_task_id_t task_id,           /* ID of current task           */
   int device_id,                    /* ID of the device             */
   void *host_addr,                  /* host  address of the data    */
   void *device_addr,                /* device address of the data   */ 
@@ -2622,6 +2631,8 @@ typedef void (*ompt_callback_t)(    /* for shutdown                 */
   void
 ); 
 \end{verbatim}
+
+{\color{red} Tim: Isnt ompt\_target\_callback\_t missing? (s. data end event)}
 
 \paragraph{Placeholder callback signature.} The type \verb|ompt_callback_t| is also a placeholder signature used only by the tool callback registration interface. 
 Only one callback registration function is defined and it expects that the callback supplied will be cast into type \verb|ompt_callback_t|, regardless of its actual type signature. This approach avoids the need for a separate registration routine for each unique tool callback signature. 
@@ -2695,7 +2706,7 @@ OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return curren
 \subsection{Record Types and Buffer Management}
 \label{appendix:ompt-records}
 
-{\color{red} TODO: add target records, as they are allowed on a target device}
+{\color{red} TODO: add missing target record (ompt\_record\_target\_t)?}
 
 \begin{verbatim}
 /* OMPT record type */
@@ -2710,17 +2721,18 @@ typedef struct ompt_record_native_abstract_s {
   ompt_record_native_kind_t kind,
   const char *type;
   uint64_t start_time;
-  unit65_t end_time;
+  unit64_t end_time;
   uint32_t hwid;
-  ompt_task_id_t target_task_id;
+  uint64_t correlation_id;
 } ompt_record_native_abstract_t;
 
 /* OMPT record */
 typedef struct ompt_record_s {
-  ompt_event_t type;                           /* event type */
-  uint64_t time;                               /* time, when the record occurred */
-  ompt_thread_id_t thread_id;                  /* thread identifier for this record */
-  ompt_task_id_t target_task_id    /* link back to its associated target task */
+  ompt_event_t type;                    /* event type */
+  uint64_t time;                        /* time, when the record occurred */
+  ompt_thread_id_t thread_id;           /* thread identifier for this record */
+  uint64_t correlation_id;              /* link back to its associated context - this can be a
+                                           target task id, a parent task id or something else */
   union
   {
     ompt_record_thread_t;                      /* for thread          */
@@ -2736,7 +2748,7 @@ typedef struct ompt_record_s {
   } record;
 } ompt_record_t;
 
-/* target record types */
+/* record types */
 typedef struct
 {
   ompt_thread_id_t thread_id       /* ID of thread                  */
@@ -2792,6 +2804,50 @@ typedef struct
   ompt_task_id_t new_task_id;      /* ID of created task */
   void *new_task_function;         /* pointer to outlined function */
 } ompt_record_new_task_t;
+
+typedef struct
+{
+  ompt_task_id_t parent_task_id,    /* ID of parent task            */
+  ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  ompt_task_id_t target_task_id,    /* ID of target task            */
+  int device_id,                    /* ID of the device             */
+  void *target_task_function        /* pointer to outlined function */
+} ompt_record_new_target_task_t;
+
+
+typedef struct 
+  ompt_task_id_t task_id,           /* ID of encountering task      */
+  int device_id,                    /* ID of the device             */
+  void *target_data_code            /* ptr to target data code      */
+} ompt_record_new_target_data_t;
+ 
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of encountering task      */
+  int device_id,                    /* ID of the device             */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags,           /* sync/async, to/from          */
+  void *target_map_code             /* ptr to target map code       */
+} ompt_record_new_data_map_t;
+
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of current task           */
+  int device_id,                    /* ID of the device             */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags            /* sync/async, to/from          */
+} ompt_record_data_map_done_t;
+
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of task with dependences  */
+  ompt_task_dependence_t *deps,     /* vector of task dependences   */
+  int ndeps                         /* number of dependences        */
+} ompt_record_task_dependences_t;
 
 /* buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
