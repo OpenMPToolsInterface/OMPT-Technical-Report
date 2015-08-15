@@ -1017,7 +1017,7 @@ before the task
   The OpenMP runtime invokes this callback when the task that encountered the target data region is 
   done with the target data region. 
   The callback executes in the context of the task that encountered the target data construct.
-  This callback has type signature \verb|ompt_target_callback_t|.
+  This callback has type signature \verb|ompt_task_callback_t|.
 
 \item \verb|ompt_event_target_update_begin|
 
@@ -2442,8 +2442,8 @@ typedef enum {
   ompt_event_target_update_begin      = 66, /* target update begin        */
   ompt_event_target_update_end        = 67, /* target update end          */
 
-  ompt_event_data_map_begin           = 68, /* before data mapping        */
-  ompt_event_data_map_end             = 69, /* after data mapping         */
+  ompt_event_target_data_map_begin    = 68, /* before data mapping        */
+  ompt_event_target_data_map_end      = 69, /* after data mapping         */
   
   ompt_event_task_dependence          = 70  /* new task-dependence        */
 } ompt_event_t;
@@ -2486,8 +2486,17 @@ typedef struct {
 } ompt_task_dependence_t
 
 typedef enum ompt_target_map_flag_e {
-  ompt_target_map_flag_sync = 1,
-  ompt_target_map_flag_to = 2
+  // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
+  ompt_target_map_flag_to      = 1,
+  ompt_target_map_flag_from    = 2
+  ompt_target_map_flag_tofrom  = 3, 
+  ompt_target_map_flag_alloc   = 4,
+  ompt_target_map_flag_release = 5, 
+  ompt_target_map_flag_delete  = 6, 
+  // 7 unused
+
+  // one bit for synchronous/asynchronous
+  ompt_target_map_flag_sync = 8,   
 } ompt_target_map_flag_t;
 
 #define ompt_hwid_none (-1)
@@ -2597,7 +2606,7 @@ typedef void (*ompt_new_data_map_callback_t) (
 );
 
 typedef void (*ompt_data_map_done_callback_t) (
-  ompt_task_id_t task_id,           /* ID of current task         */
+  ompt_task_id_t task_id,           /* ID of current task           */
   int device_id,                    /* ID of the device             */
   void *host_addr,                  /* host  address of the data    */
   void *device_addr,                /* device address of the data   */ 
@@ -2680,22 +2689,19 @@ OMPT_API ompt_frame_t *ompt_get_task_frame(
 );
 
 /* target device inquiry */
-OMPT_API ompt_target_device_id_t ompt_get_target_device_id( /* return active target
-                                                               device ID                 */
+OMPT_API int ompt_get_target_device_id(         /* return active target device ID        */
   void
 );
 
 OMPT_API ompt_target_device_time_t ompt_get_target_device_time( /* return current time
                                                                    stamp of a device     */
-  omp_target_device_id_t id      /* the target device of interest                        */
+  int device_id                  /* the target device of interest                        */
 );
 \end{verbatim}
 
 \clearpage  
 \subsection{Record Types and Buffer Management}
 \label{appendix:ompt-records}
-
-{\color{red} TODO: add target records, as they are allowed on a target device}
 
 \begin{verbatim}
 /* OMPT record type */
@@ -2710,17 +2716,18 @@ typedef struct ompt_record_native_abstract_s {
   ompt_record_native_kind_t kind,
   const char *type;
   uint64_t start_time;
-  unit65_t end_time;
+  unit64_t end_time;
   uint32_t hwid;
-  ompt_task_id_t target_task_id;
+  uint64_t correlation_id;
 } ompt_record_native_abstract_t;
 
 /* OMPT record */
 typedef struct ompt_record_s {
-  ompt_event_t type;                           /* event type */
-  uint64_t time;                               /* time, when the record occurred */
-  ompt_thread_id_t thread_id;                  /* thread identifier for this record */
-  ompt_task_id_t target_task_id    /* link back to its associated target task */
+  ompt_event_t type;                    /* event type */
+  uint64_t time;                        /* time, when the record occurred */
+  ompt_thread_id_t thread_id;           /* thread identifier for this record */
+  uint64_t correlation_id;              /* link back to its associated context - this can be a
+                                           target task id, a parent task id or something else */
   union
   {
     ompt_record_thread_t;                      /* for thread          */
@@ -2736,7 +2743,7 @@ typedef struct ompt_record_s {
   } record;
 } ompt_record_t;
 
-/* target record types */
+/* record types */
 typedef struct
 {
   ompt_thread_id_t thread_id       /* ID of thread                  */
@@ -2793,6 +2800,50 @@ typedef struct
   void *new_task_function;         /* pointer to outlined function */
 } ompt_record_new_task_t;
 
+typedef struct
+{
+  ompt_task_id_t parent_task_id,    /* ID of parent task            */
+  ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  ompt_task_id_t target_task_id,    /* ID of target task            */
+  int device_id,                    /* ID of the device             */
+  void *target_task_function        /* pointer to outlined function */
+} ompt_record_new_target_task_t;
+
+
+typedef struct 
+  ompt_task_id_t task_id,           /* ID of encountering task      */
+  int device_id,                    /* ID of the device             */
+  void *target_data_code            /* ptr to target data code      */
+} ompt_record_new_target_data_t;
+ 
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of encountering task      */
+  int device_id,                    /* ID of the device             */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags,           /* sync/async, to/from          */
+  void *target_map_code             /* ptr to target map code       */
+} ompt_record_new_data_map_t;
+
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of current task           */
+  int device_id,                    /* ID of the device             */
+  void *host_addr,                  /* host  address of the data    */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes,                     /* number of bytes mapped       */
+  uint32_t mapping_flags            /* sync/async, to/from          */
+} ompt_record_data_map_done_t;
+
+typedef struct
+{
+  ompt_task_id_t task_id,           /* ID of task with dependences  */
+  ompt_task_dependence_t *deps,     /* vector of task dependences   */
+  int ndeps                         /* number of dependences        */
+} ompt_record_task_dependences_t;
+
 /* buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
   ompt_target_event_t** buffer,   /* pointer to host memory to store target records */
@@ -2801,7 +2852,7 @@ typedef void (*ompt_target_buffer_request_callback_t) (
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
   ompt_target_event_t* buffer,   /* pointer to buffer with target event records */
-  omp_target_device_id_t device, /* target device */
+  int device_id,                 /* target device */
   size_t valid_bytes             /* number of valid bytes in the buffer */
 );
 
