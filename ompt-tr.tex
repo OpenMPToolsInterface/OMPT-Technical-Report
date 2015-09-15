@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised August 7, 2015}
+\date{Revised September 16, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -433,8 +433,6 @@ This callback has type signature \verb|ompt_thread_type_callback_t|.
 
 \descheader{Parallel Regions}
 
-{\color{red} How should we handle degenerate regions (e.g, a nested region where nesting is disabled, or a region that will execute serially because there are no other threads available to help execute it?}
-
 \begin{description}
 
 \item \verb|ompt_event_parallel_begin|
@@ -459,6 +457,14 @@ the context of the task that encountered the parallel construct.
 This callback has type signature \verb|ompt_parallel_callback_t|. 
 
 \end{description}
+
+\noindent
+{\em Note to implementers}: For degenerate parallel regions executed by a single thread, e.g., for
+a nested region encountered when nested parallelism is disabled or at a nesting depth greater than the 
+maximum number of nested active parallel regions supported on a device, 
+it is implementation dependent whether or not an OpenMP runtime system will perform
+ \verb|ompt_event_parallel_begin| and \verb|ompt_event_parallel_end| callbacks.
+
 
 % \descheader{Target Regions}
 % 
@@ -513,7 +519,8 @@ This callback has type signature \verb|ompt_new_target_task_callback_t|.
 The OpenMP runtime invokes this callback after a target task completes but 
 before the thread resumes execution of another task. The callback executes in 
 the context of an arbitrary task on the thread that completed the target task.
-This callback has type signature \verb|ompt_task_calltack_t|. The task id passed to the callback belongs to the target task.
+This callback has type signature \verb|ompt_target_task_end_callback_t|. The \verb|dev_task_id| passed to the callback is identical to  
+the one passed to the matching \verb|ompt_event_target_task_begin| callback.
 
 \end{description}
 
@@ -868,9 +875,14 @@ just after an initial
  
    The OpenMP runtime system invokes this callback just after a
    task initializes a lock (nest lock).  This callback executes in the
-   context of the task that called \verb|omp_init_lock| (\verb|omp_init_nest_lock|); its \verb|wait_id| parameter identifies the
-   lock.
-   This callback has type signature \verb|ompt_wait_callback_t|. 
+   context of the task that called \verb|omp_init_lock| (\verb|omp_init_nest_lock|). 
+      This callback has type signature \verb|ompt_lock_callback_t|. 
+   The callback's \verb|wait_id| parameter identifies the lock itself (e.g., with a pointer to the lock). 
+   The \verb|lock_hint| parameter is the lock hint value passed to the initialization request.
+   The \verb|lock_type| parameter is a small integer that indicates the kind of lock assigned by the OpenMP runtime system. 
+   One can determine the mapping between \verb|lock_type| integers and the names of the lock types they represent by using 
+   \verb|ompt_enumerate_lock_types|. 
+
 
 \item \verb|ompt_event_destroy_lock| (\verb|ompt_event_destroy_nest_lock|)
  
@@ -1009,7 +1021,7 @@ before the task
   The OpenMP runtime invokes this callback after a task encounters a target data construct but before the new data environment is created.
   The callback executes in the context of the task that encountered the target data construct. 
   This callback has type signature \verb|ompt_new_target_data_callback_t|. Arguments to the callback include the ID of the encountering task, the ID of the 
-  target device, and the return address of the invocation of a runtime routine to perform the target data operation, which relates the operation to 
+  target device, and the return address of the call to the runtime routine performing the target data operation, which relates the operation to 
   the user program. 
   
 \item \verb|ompt_event_target_data_end|
@@ -1037,7 +1049,7 @@ before the task
 
   The OpenMP runtime invokes this callback just before a variable is mapped to or from the device data environment.
   The callback executes in the context of the encountering task, which executes the region.
-  This callback has type signature \verb|ompt_new_data_map_callback_t|.
+  This callback has type signature \verb|ompt_new_data_map_callback_t|.  The callback argument \verb|target_map_code| will contain the return address of the call to the runtime routine performing the target data map operation, which will relate the operation to the user program. 
 
 \item \verb|ompt_event_target_data_map_end|
 
@@ -1045,12 +1057,17 @@ before the task
   The callback executes in the context of the the encountering task, which executes the region.
   This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the encountering task.
   
-  \item \verb|ompt_event_target_data_map_done|
+  \item \verb|ompt_event_target_data_map_done_async|
 
-  The OpenMP runtime invokes this callback after a variable map operation finishes execution on a device.
+  The OpenMP runtime invokes this callback after an asynchronous variable map operation finishes execution on a device.
    Since the map operation may execute asynchronously on the device, the map done callback may occur after the map end.
   The callback executes in the context of an arbitrary task, which may not be the one that initiated the map operation.
-  This callback has type signature \verb|ompt_data_map_done_callback_t|.
+  This callback has type signature \verb|ompt_data_map_done_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
+  
+\item \verb|ompt_event_target_data_map_done_sync|
+
+  The OpenMP runtime invokes this callback after a synchronous variable map operation finishes execution on a device. This callback has type signature \verb|ompt_data_map_done_callback_t|.  The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
+
 
 % \item \verb|ompt_event_target_invoke_begin|
 % 
@@ -1205,9 +1222,13 @@ before the task
 \sloppy
    The OpenMP runtime system invokes this callback when this task
    enters the \verb|ompt_state_wait_critical| state.  This callback
-   executes in the context of the task that encountered the critical construct; its \verb|wait_id| parameter
-   identifies the critical construct.
-   This callback has type signature \verb|ompt_wait_callback_t|. 
+   executes in the context of the task that encountered the critical construct.
+   This callback has type signature \verb|ompt_lock_callback_t|. 
+    The callback's \verb|wait_id| parameter identifies the lock used to implement the critical construct.
+   The \verb|lock_hint| parameter is the lock hint value specified in the critical construct.
+   The \verb|lock_type| parameter is a small integer that indicates the kind of lock assigned by the OpenMP runtime system. 
+   One can determine the mapping between \verb|lock_type| integers and the names of the lock types they represent by using 
+   \verb|ompt_enumerate_lock_types|. 
 
 \item \verb|ompt_event_acquired_critical|
 
@@ -1507,6 +1528,48 @@ while (ompt_enumerate_state(state, &state, &state_name)) {
 }
 \end{verbatim}
 \end{quote}
+
+ \subsection{Enumerate Lock Types Supported by an OpenMP Runtime (Optional)}
+ \label{ompt_enumerate_lock_type}
+ 
+An OpenMP runtime system will support one or more types of locks. 
+When a lock is initialized, the callback for lock initialization (of type \verb|ompt_lock_callback_t|) provides
+a small integer to identify the type of the lock being initialized. 
+To understand the type of lock associated with each such small integer value, OMPT provides
+the following interface for enumerating all lock types that a particular runtime system implements. 
+
+\begin{quote}
+\begin{verbatim}
+OMPT_API int ompt_enumerate_lock_type(
+  ompt_lock_type_t current_type, 
+  ompt_lock_type_t *next_type, 
+  const char **next_type_name
+);
+\end{verbatim}
+\end{quote}
+
+\noindent
+To begin enumerating the lock types that a runtime system supports,
+the value \verb|ompt_lock_type_first| should be supplied for \verb|current_type| in the call to \verb|ompt_enumerate_lock_type| that begins the enumeration.
+The argument \verb|next_type| is a pointer to an \verb|ompt_lock_type_t| that will be set to the code for the next type in the enumeration.
+The argument \verb|next_type_name| is a pointer to a location that will be filled in with a pointer to the name of the lock type associated with \verb|next_type|. 
+Subsequent invocations of \verb|ompt_enumerate_lock_type| should pass the code returned in \verb|next_type| by the prior call.
+Whenever one or more lock types are left in the enumeration, \verb|ompt_enumerate_lock_type| will return 1.
+When the last lock type in the enumeration is passed to \verb|ompt_enumerate_lock_type| as \verb|current_type|, 
+the function will return 0 indicating that the enumeration is complete.
+An example of how to enumerate the lock types supported by an OpenMP runtime system is shown below:
+
+\begin{quote}
+\begin{verbatim}
+ompt_lock_type_t type = ompt_lock_type_first;
+const char *type_name;
+while (ompt_enumerate_lock_type(type, &type, &type_name)) {
+  // tool notes that the runtime supports ompt_lock_type_t "type" 
+  // associated with "type_name" 
+}
+\end{verbatim}
+\end{quote}
+
 
 
 \subsection{Thread Inquiry (Mandatory)}
@@ -2455,6 +2518,13 @@ typedef enum {
 This section describes miscellaneous enumeration types used by tool callbacks.
 
 \begin{verbatim}
+
+typedef uint64_t ompt_dev_activity_id_t;   /* ID of an activity on a device */
+
+typedef uint32_t ompt_lock_type_t;  /* small integers differentiating the types of locks */
+
+typedef uint32_t ompt_lock_hint_t; /* takes the values of typedef uint32_t omp_lock_type_t; */
+
 typedef enum ompt_thread_type_e {
   ompt_thread_initial  = 1,
   ompt_thread_worker   = 2,
@@ -2473,16 +2543,20 @@ typedef enum ompt_invoker_e {
   ompt_invoker_runtime = 1          /* runtime invokes master task  */
 } ompt_invoker_t;
 
-typedef enum ompt_task_dependence_type_e {
+typedef enum ompt_task_dependence_flag_e {
+  // a two bit field for the dependence type
   ompt_task_dependence_type_out   = 1,
   ompt_task_dependence_type_in    = 2,
-  ompt_task_dependence_type_inout = 3
-} ompt_task_dependence_type_t;
+  ompt_task_dependence_type_inout = 3,
+  
+  // a one bit field for satisfied
+  ompt_task_dependence_satisfied = 4
+} ompt_task_dependence_flag_t;
 
 typedef struct {
   void *variable_addr;
   size_t len;
-  ompt_dependence_type_t type;
+  uint32_t  dependence_flags;
 } ompt_task_dependence_t
 
 typedef enum ompt_target_map_flag_e {
@@ -2500,12 +2574,12 @@ typedef enum ompt_target_map_flag_e {
 } ompt_target_map_flag_t;
 
 #define ompt_hwid_none (-1)
+#define ompt_dev_task_none (~0ULL)
 #define ompt_time_none (~0ULL)
-
-
+#define ompt_lock_type_first 0
 \end{verbatim}
+\clearpage
 
-\clearpage  
 \subsection{Type Signatures for Tool Callbacks}
 \label{appendix:ompt-types:callbacks}
 This section describes type signatures for all  callbacks that a tool may register to receive from an OpenMP runtime. Section~\ref{sec:events} describes OpenMP runtime events and registration of
@@ -2557,11 +2631,10 @@ typedef void (*ompt_new_parallel_callback_t) ( /* for new parallel  */
 );
   
 typedef void (*ompt_end_parallel_callback_t) (
-  ompt_parallel_id_t parallel_id,   /* id of parallel region        */
-  ompt_task_id_t task_id,           /* id of task                   */
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t task_id,           /* ID of task                   */
   ompt_invoker_t invoker            /* who invokes master task?     */
-);
-								    
+);							    
 		
 /* tasks */						    						    
 typedef void (*ompt_task_callback_t) ( /* for tasks                 */	   
@@ -2583,9 +2656,21 @@ typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
 typedef void (*ompt_new_target_task_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
-  ompt_task_id_t target_task_id,    /* ID of target task            */
+  ompt_task_id_t host_task_id,      /* ID of target task on host    */
+  ompt_dev_activity_id_t dev_task_id,/* ID of target task on device */
   int device_id,                    /* ID of the device             */
-  void *target_task_function        /* pointer to outlined function */
+  void *target_task_code            /* ptr to target code           */
+);
+
+typedef void (*ompt_target_task_end_callback_t) ( 	   
+  ompt_dev_activity_id_t  dev_task_id /* ID of target task          */
+);
+
+/* lock initialization */
+typedef void (*ompt_lock_callback_t) (
+  ompt_wait_id_t wait_id,           /* wait ID                      */
+  ompt_lock_hint_t lock_hint,       /* OMP lock hint                */
+  ompt_lock_type_t lock_type        /* lock type assigned           */ 
 );
 
 /* target device */
@@ -2602,16 +2687,13 @@ typedef void (*ompt_new_data_map_callback_t) (
   void *device_addr,                /* device address of the data   */ 
   size_t bytes,                     /* number of bytes mapped       */
   uint32_t mapping_flags,           /* sync/async, to/from          */
-  void *target_map_code             /* ptr to target map code       */
+  void *target_map_code,            /* ptr to target map code       */
+  ompt_dev_activity_id_t  map_id    /* ID for map event             */
 );
 
 typedef void (*ompt_data_map_done_callback_t) (
-  ompt_task_id_t task_id,           /* ID of current task           */
   int device_id,                    /* ID of the device             */
-  void *host_addr,                  /* host  address of the data    */
-  void *device_addr,                /* device address of the data   */ 
-  size_t bytes,                     /* number of bytes mapped       */
-  uint32_t mapping_flags            /* sync/async, to/from          */
+  ompt_dev_activity_id_t  map_id    /* ID for map event             */
 );
 
 /* task dependences */
@@ -2658,6 +2740,13 @@ OMPT_API int ompt_enumerate_state( /* extract the set of states supported       
   ompt_state_t current_state,   /* current state in the enumeration                      */
   ompt_state_t *next_state,     /* next state in the enumeration                         */
   const char **next_state_name  /* string description of next state                      */
+);
+
+/* lock type inquiry */
+OMPT_API int ompt_enumerate_lock_type( /* extract the set of lock types supported        */
+  ompt_lock_type_t current_type,/* current lock type in the enumeration                  */
+  ompt_lock_type_t *next_type,  /* next lock type in the enumeration                     */
+  const char **next_type_name   /* string description of next lock type                  */
 );
 
 /* thread inquiry */
@@ -2718,16 +2807,15 @@ typedef struct ompt_record_native_abstract_s {
   uint64_t start_time;
   unit64_t end_time;
   uint32_t hwid;
-  uint64_t correlation_id;
+  ompt_dev_activity_t dev_task_id;
 } ompt_record_native_abstract_t;
 
 /* OMPT record */
 typedef struct ompt_record_s {
-  ompt_event_t type;                    /* event type */
-  uint64_t time;                        /* time, when the record occurred */
+  ompt_event_t type;                    /* event type                        */
+  uint64_t time;                        /* time, when the record occurred    */
   ompt_thread_id_t thread_id;           /* thread identifier for this record */
-  uint64_t correlation_id;              /* link back to its associated context - this can be a
-                                           target task id, a parent task id or something else */
+  ompt_dev_activity_id_t dev_task_id;     /* link back to its host context     */
   union
   {
     ompt_record_thread_t;                      /* for thread          */
@@ -2806,7 +2894,7 @@ typedef struct
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
   ompt_task_id_t target_task_id,    /* ID of target task            */
   int device_id,                    /* ID of the device             */
-  void *target_task_function        /* pointer to outlined function */
+  void *target_task_code        /* pointer to target task code */
 } ompt_record_new_target_task_t;
 
 
