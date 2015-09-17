@@ -1705,7 +1705,7 @@ OMPT_API ompt_frame_t *ompt_get_task_frame(
 \end{verbatim}
 \end{quote}
 Both 
-\verb|ompt_get_task_id|  and  \verb|ompt_get_task_frame| identify a target task by a depth. Depth 0 refers to the current task. 
+\verb|ompt_get_task_info|  and  \verb|ompt_get_task_frame| identify a target task by a depth. Depth 0 refers to the current task. 
 Information about other tasks in the current execution context may be queried at higher depths. 
 {\em Both functions are async signal safe.} 
 
