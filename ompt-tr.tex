@@ -158,12 +158,11 @@ thread is waiting. The semantics of the values used for a \verb|wait_id| are imp
 A thread's \verb|wait_id| is undefined if the thread
 is not in a wait state.
 
-States are classified as {\em mandatory}, {\em optional}, or {\em flexible}. 
-Flexible states provide an OpenMP runtime with leeway to determine if
-and when to report transitions to a flexible state.
+States are classified as {\em mandatory} or {\em optional}.
+For some states, OpenMP runtimes have some flexibility about whether to report the state early or late.
 For example, consider when a thread acquires a lock. One
 compliant runtime may transition a thread's state to 
-\verb|ompt_state_wait_lock| (flexible state) early before the thread attempts to acquire a
+\verb|ompt_state_wait_lock|  early before the thread attempts to acquire a
 lock. Another compliant runtime may transition a thread's state to
 \verb|ompt_state_wait_lock| late, only if the thread begins to spin or
 block to wait for an unavailable lock. A third compliant runtime
@@ -208,7 +207,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-  \item \verb|ompt_state_wait_barrier| (flexible)
+  \item \verb|ompt_state_wait_barrier| (mandatory)
   
   \sloppy
   The thread is waiting at either an implicit or explicit barrier.
@@ -216,7 +215,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   early, when the thread encounters a barrier, or late, when the
   thread begins to wait at the barrier. A  compliant implementation may never report a thread in this state; instead a thread might report its state as \verb|ompt_state_wait_barrier_implicit|  or \verb|ompt_state_wait_barrier_explicit|, as appropriate.
   
-  \item \verb|ompt_state_wait_barrier_implicit| (flexible)
+  \item \verb|ompt_state_wait_barrier_implicit| (optional)
   
 \sloppy
   The thread is waiting at an implicit barrier in a parallel region. 
@@ -225,7 +224,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   thread begins to wait at the barrier.
   A  compliant runtime implementation may report \verb|ompt_state_wait_barrier| for implicit barriers.
   
-    \item \verb|ompt_state_wait_barrier_explicit| (flexible)
+    \item \verb|ompt_state_wait_barrier_explicit| (optional)
 
   The thread is waiting at an explicit barrier  in a parallel region. 
   A  compliant implementation may have a thread enter this state
@@ -239,7 +238,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_target| 
+\item \verb|ompt_state_wait_target| (mandatory)
 
   The thread is waiting at a target construct. A compliant
   implementation will have a thread enter this state when the thread
@@ -266,14 +265,14 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_taskwait| (flexible)
+\item \verb|ompt_state_wait_taskwait| (mandatory)
 
   The thread is waiting at a taskwait construct. A compliant
   implementation may have a thread enter this state early, when the
   thread encounters a taskwait construct, or late, when the thread
   begins to wait for an uncompleted task.
 
-\item \verb|ompt_state_wait_taskgroup| (flexible)
+\item \verb|ompt_state_wait_taskgroup| (mandatory)
 
   The thread is waiting at the end of a taskgroup construct. A compliant
   implementation may have a thread enter this state early, when the
@@ -287,7 +286,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_lock| (\verb|ompt_state_wait_nest_lock|) (flexible)
+\item \verb|ompt_state_wait_lock| (\verb|ompt_state_wait_nest_lock|) (mandatory)
 
   The thread is waiting for a  lock (nest lock). A compliant implementation
   may have a thread enter this state early, when a thread
@@ -297,7 +296,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   Before a thread enters this state, the OpenMP runtime system will
   update the thread's \verb|ompt_wait_id_t| field to identify the lock (nest lock) being acquired.
 
-\item \verb|ompt_state_wait_critical| (flexible)
+\item \verb|ompt_state_wait_critical| (mandatory)
 
   The thread is waiting to enter a critical region. A compliant
   implementation may have a thread enter this state early, when the
@@ -309,7 +308,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   Before a thread enters this state, the OpenMP runtime system will
   update the thread's \verb|ompt_wait_id_t| field to identify the critical construct or an internal runtime variable (e.g., a lock) associated with the critical construct.
 
-\item \verb|ompt_state_wait_atomic| (flexible)
+\item \verb|ompt_state_wait_atomic| (mandatory)
 
   The thread is waiting to enter an atomic region. A compliant
   implementation may have a thread enter this state early, when the thread
@@ -324,7 +323,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   update the thread's \verb|ompt_wait_id_t| field to identify the atomic construct, a program variable, or an internal runtime variable (e.g., a lock) associated with the atomic construct.
 
 
-\item \verb|ompt_state_wait_ordered| (flexible)
+\item \verb|ompt_state_wait_ordered| (mandatory)
 
   The thread is waiting to enter an ordered region. A compliant
   implementation may have a thread enter this state early, when the thread encounters
@@ -2151,9 +2150,9 @@ When an OpenMP runtime system receives a non-NULL pointer to a tool initializer 
 \begin{quote}
 \begin{verbatim}
 typedef void (*ompt_initialize_fn_t) (
+  ompt_function_lookup_t lookup,
   const char *runtime_version, 
-  unsigned int ompt_version,
-  ompt_function_lookup_t lookup 
+  unsigned int ompt_version
 );
 \end{verbatim}
 \end{quote}
