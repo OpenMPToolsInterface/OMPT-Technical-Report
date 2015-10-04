@@ -158,7 +158,8 @@ thread is waiting. The semantics of the values used for a \verb|wait_id| are imp
 A thread's \verb|wait_id| is undefined if the thread
 is not in a wait state.
 
-States are classified as {\em mandatory} or {\em optional}.
+% States are classified as {\em mandatory} or {\em optional}.
+Some states must be supported by any compliant implementation, e.g., those indicating that a thread is executing parallel or serial work. In other cases, alternatives exist. For instance, one may use a single state to represent all waiting at barriers or use a pair of states to differentiate between waiting at implicit and explicit barriers.
 For some states, OpenMP runtimes have some flexibility about whether to report the state early or late.
 For example, consider when a thread acquires a lock. One
 compliant runtime may transition a thread's state to 
@@ -175,26 +176,25 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 \descheader{Idle State}
 
 \begin{description}
-\item \verb|ompt_state_idle| (mandatory)
+\item \verb|ompt_state_idle| 
 
-  The thread is idle while waiting to work on an OpenMP parallel
-  region.
+  The thread is idle, waiting for work.
 \end{description}
 
 \descheader{Work States}
 
 \begin{description}
 
-\item \verb|ompt_state_work_serial| (mandatory)
+\item \verb|ompt_state_work_serial| 
 
   The thread is executing code outside all parallel regions. 
 
-\item \verb|ompt_state_work_parallel| (mandatory)
+\item \verb|ompt_state_work_parallel| 
 
   The thread is executing code within the scope of a parallel region construct.
 
 \sloppy
-\item \verb|ompt_state_work_reduction| (optional)
+\item \verb|ompt_state_work_reduction| 
  
   The thread is combining partial reduction results from threads in its team. A compliant
   runtime might never report a thread in this state; a thread
@@ -207,15 +207,15 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-  \item \verb|ompt_state_wait_barrier| (mandatory)
+  \item \verb|ompt_state_wait_barrier| 
   
   \sloppy
   The thread is waiting at either an implicit or explicit barrier.
   A  compliant implementation may have a thread enter this state
   early, when the thread encounters a barrier, or late, when the
-  thread begins to wait at the barrier. A  compliant implementation may never report a thread in this state; instead a thread might report its state as \verb|ompt_state_wait_barrier_implicit|  or \verb|ompt_state_wait_barrier_explicit|, as appropriate.
+  thread begins to wait at the barrier. A  compliant implementation may never report a thread in this state; instead, a thread might report its state as \verb|ompt_state_wait_barrier_implicit|  or \verb|ompt_state_wait_barrier_explicit|, as appropriate.
   
-  \item \verb|ompt_state_wait_barrier_implicit| (optional)
+  \item \verb|ompt_state_wait_barrier_implicit| 
   
 \sloppy
   The thread is waiting at an implicit barrier in a parallel region. 
@@ -224,7 +224,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   thread begins to wait at the barrier.
   A  compliant runtime implementation may report \verb|ompt_state_wait_barrier| for implicit barriers.
   
-    \item \verb|ompt_state_wait_barrier_explicit| (optional)
+    \item \verb|ompt_state_wait_barrier_explicit| 
 
   The thread is waiting at an explicit barrier  in a parallel region. 
   A  compliant implementation may have a thread enter this state
@@ -238,20 +238,20 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_target| (mandatory)
+\item \verb|ompt_state_wait_target| 
 
   The thread is waiting at a target construct. A compliant
   implementation will have a thread enter this state when the thread
   begins to wait for a target region to complete.
   
-\item \verb|ompt_state_wait_target_data| (optional)
+\item \verb|ompt_state_wait_target_data| 
 
   The thread is waiting at a target data construct. A compliant
   implementation will have a thread enter this state when the thread
   begins to wait for a target data construct to complete.
   A  compliant runtime implementation may report \verb|ompt_state_wait_target| for target data constructs.
 
-\item \verb|ompt_state_wait_target_update| (optional)
+\item \verb|ompt_state_wait_target_update| 
 
   The thread is waiting at a target update construct. A compliant
   implementation will have a thread enter this state when the thread
@@ -265,14 +265,14 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_taskwait| (mandatory)
+\item \verb|ompt_state_wait_taskwait| 
 
   The thread is waiting at a taskwait construct. A compliant
   implementation may have a thread enter this state early, when the
   thread encounters a taskwait construct, or late, when the thread
   begins to wait for an uncompleted task.
 
-\item \verb|ompt_state_wait_taskgroup| (mandatory)
+\item \verb|ompt_state_wait_taskgroup| 
 
   The thread is waiting at the end of a taskgroup construct. A compliant
   implementation may have a thread enter this state early, when the
@@ -286,7 +286,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_wait_lock| (\verb|ompt_state_wait_nest_lock|) (mandatory)
+\item \verb|ompt_state_wait_lock| (\verb|ompt_state_wait_nest_lock|)
 
   The thread is waiting for a  lock (nest lock). A compliant implementation
   may have a thread enter this state early, when a thread
@@ -296,7 +296,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   Before a thread enters this state, the OpenMP runtime system will
   update the thread's \verb|ompt_wait_id_t| field to identify the lock (nest lock) being acquired.
 
-\item \verb|ompt_state_wait_critical| (mandatory)
+\item \verb|ompt_state_wait_critical| 
 
   The thread is waiting to enter a critical region. A compliant
   implementation may have a thread enter this state early, when the
@@ -308,7 +308,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   Before a thread enters this state, the OpenMP runtime system will
   update the thread's \verb|ompt_wait_id_t| field to identify the critical construct or an internal runtime variable (e.g., a lock) associated with the critical construct.
 
-\item \verb|ompt_state_wait_atomic| (mandatory)
+\item \verb|ompt_state_wait_atomic| 
 
   The thread is waiting to enter an atomic region. A compliant
   implementation may have a thread enter this state early, when the thread
@@ -323,7 +323,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   update the thread's \verb|ompt_wait_id_t| field to identify the atomic construct, a program variable, or an internal runtime variable (e.g., a lock) associated with the atomic construct.
 
 
-\item \verb|ompt_state_wait_ordered| (mandatory)
+\item \verb|ompt_state_wait_ordered| 
 
   The thread is waiting to enter an ordered region. A compliant
   implementation may have a thread enter this state early, when the thread encounters
@@ -341,7 +341,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_overhead| (optional)
+\item \verb|ompt_state_overhead| 
 
   A thread may be reported as being in the overhead state at any point while executing within an OpenMP runtime system, e.g., while
     preparing a parallel region, 
@@ -357,14 +357,14 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|ompt_state_undefined| (mandatory)
+\item \verb|ompt_state_undefined| 
 
   This state is reserved for threads that are not user threads,
   initial threads, threads currently in an OpenMP team, or threads
   waiting to become part of an OpenMP team.
 
 
-\item \verb|ompt_state_first| (mandatory)
+\item \verb|ompt_state_first| 
 
 \sloppy
   This state is a placeholder exclusively reserved for use by the OMPT runtime call \verb|ompt_enumerate_state| (see Section~\ref{ompt_enumerate_state}), which is used to enumerate all available runtime states. A thread will never be reported in this state.
