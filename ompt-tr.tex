@@ -507,20 +507,16 @@ This callback has type signature \verb|ompt_task_callback_t|.
 
 \item \verb|ompt_event_target_task_begin|
  
-The OpenMP runtime invokes this callback after a task encounters a target 
+The OpenMP runtime invokes this callback after a task encounters a target, target enter data, or target exit data, target update
 construct but before the target task executes. The callback executes in the 
 context of the task that encountered the target construct.
 This callback has type signature \verb|ompt_new_target_task_callback_t|.
 
-\item \verb|ompt_event_target_task_end_sync|   
+\item \verb|ompt_event_target_task_end|   
  
 \sloppy
-The OpenMP runtime invokes this callback after a target task completes on the host but 
-before resuming execution of the task that encountered the target construct. Note: if the target construct associated
-with this event has a \verb|nowait| clause specified, the occurrence of this callback indicates
-only that a target region instance is complete on the host; 
-it implies nothing about activity associated with the target region instance on a device.
-The callback executes in the context of the task that encountered the target task construct.
+The OpenMP runtime invokes this callback after a target task completes on both the host and the device.
+%The callback executes in the context of the task that encountered the target task construct.
 This callback has type signature \verb|ompt_target_task_end_callback_t|.
 
 \end{description}
@@ -581,19 +577,6 @@ to code being executed by working threads while other threads wait.
 
 The events listed immediately below are used by an OpenMP runtime to notify a tool  when various kinds of idling begin and end. 
 Since idling indicates the absence of any activity, a thread will not receive any event notification between begin and end notifications for idling.
-
-\descheader{Target Task Completion}
-
-\begin{description}
-
-\item \verb|ompt_event_target_task_end_async|   
- 
-\sloppy
-The OpenMP runtime invokes this callback after a target task completes on a device.
-The callback may execute in an arbitrary context on an arbitrary thread that may be of type \verb|ompt_thread_other|.
-This callback has type signature \verb|ompt_target_task_end_callback_t|.
-
-\end{description}
 
 \descheader{Idle State Entry/Exit}
 
@@ -860,10 +843,11 @@ just after an initial
 
  The OpenMP runtime system invokes this callback after it
  suspends one task and before it resumes another task.  This
- callback executes in the context of the resumed task.  If the
- suspended task actually completed and its data structure was
- deallocated, the value of the  \verb|suspended_task_id| parameter is 0.
- This callback has type signature \verb|ompt_task_switch_callback_t|.
+ callback executes in the context of the resumed task.  
+  The \verb|first_task_id| is the task being suspended and the \verb|second_task_id| is the task being resumed.
+  If the suspended task actually completed and its data structure was
+ deallocated, the value of the  \verb|first_task_id| parameter is 0.
+ This callback has type signature \verb|ompt_task_pair_callback_t|. 
 
 \end{description}
 
@@ -875,9 +859,16 @@ just after an initial
 \item \verb|ompt_event_task_dependences|
 
   The OpenMP runtime invokes this callback after an explicit task is created, 
-  but before the task begins execution to announce its dependences on data objects. 
+  but before the task begins execution to announce its dependences with respect to data objects. 
   This callback has type signature \verb|ompt_task_dependences_callback_t|.
+  
+\item \verb|ompt_event_task_dependence_pair|
 
+The OpenMP runtime issues this callback for dependences between a producer (\verb|first_task_id|) 
+and a consumer (\verb|second_task_id|) that blocked the execution of the consumer.
+This callback will occur before the successor task is notified that the dependence is satisfied. This may happen early or late.
+Note that this callback may not report information regarding completed dependences of already finished tasks.
+This callback has type signature \verb|ompt_task_dependence_pair_callback_t|. 
 \end{description}
 
 \descheader{Lock Creation and Destruction}
@@ -918,6 +909,7 @@ just after an initial
   executes its first  iteration of the loop. This callback executes in the
   context of the task that encountered the loop.
 This callback has type signature \verb|ompt_new_workshare_callback_t|. 
+The \verb|codeptr| callback argument will contain the return address of the call to the runtime routine, which will relate the operation to the user program.
 
 \item \verb|ompt_event_loop_end|
  
@@ -936,7 +928,8 @@ This callback has type signature \verb|ompt_parallel_callback_t|.
   The OpenMP runtime system invokes this callback before a task executes its first section in a sections region.
   This callback executes in the context of
   the task that encountered the sections construct.
-  This callback has type signature \verb|ompt_new_workshare_callback_t|. 
+  This callback has type signature \verb|ompt_new_workshare_callback_t|.
+  The \verb|codeptr| callback argument will contain the return address of the call to the runtime routine, which will relate the operation to the user program.
 
 \item \verb|ompt_event_sections_end|
 
@@ -959,6 +952,7 @@ This callback has type signature \verb|ompt_parallel_callback_t|.
   The OpenMP runtime system invokes this callback after a task encounters a single construct but before it executes the code block of the single construct. This callback
   executes in the context of the task that will execute the single code block. %*** Jim: all of these seem like they want to be in the thread context.
   This callback has type signature \verb|ompt_new_workshare_callback_t|. 
+  The \verb|codeptr| callback argument will contain the return address of the call to the runtime routine, which will relate the operation to the user program.
 
 \item \verb|ompt_event_single_in_block_end|
  
@@ -996,6 +990,7 @@ This callback has type signature \verb|ompt_parallel_callback_t|.
 \item \verb|ompt_event_workshare_begin|
 
 The OpenMP runtime system invokes this callback after a task encounters a workshare construct but before the task executes its first unit of work for the workshare. This callback executes in the context of the task that encountered the workshare construct. This callback has type signature \verb|ompt_new_workshare_callback_t|.
+The \verb|codeptr| callback argument will contain the return address of the call to the runtime routine, which will relate the operation to the user program.
 
 \item \verb|ompt_event_workshare_end|
 
@@ -1044,6 +1039,7 @@ before the task
   The callback executes in the context of the task that encountered the target data construct.
   This callback has type signature \verb|ompt_task_callback_t|.
 
+\begin{comment}
 \item \verb|ompt_event_target_update_begin|
 
   The OpenMP runtime invokes this callback after a task encounters a target update construct but before the corresponding
@@ -1057,30 +1053,32 @@ before the task
   done with the target update region. Since updates  may execute asynchronously on a device, the callback may occur before the update  is complete.
   The callback executes in the context of the task that encountered the target update construct.
   This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the target task.
+\end{comment}
 
 \item \verb|ompt_event_target_data_map_begin|
 
   The OpenMP runtime invokes this callback just before a variable is mapped to or from the device data environment.
   The callback executes in the context of the encountering task, which executes the region.
-  This callback has type signature \verb|ompt_new_data_map_callback_t|.  The callback argument \verb|target_map_code| will contain the return address of the call to the runtime routine performing the target data map operation, which will relate the operation to the user program. 
+  This callback has type signature \verb|ompt_data_map_begin_callback_t|.  
 
 \item \verb|ompt_event_target_data_map_end|
 
   The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment. Since the map operation may execute asynchronously on the device, the map end callback on the host may occur before the map operation is complete.
   The callback executes in the context of the the encountering task, which executes the region.
-  This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the encountering task.
+  This callback has type signature \verb|ompt_data_map_end_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
   
+  \begin{comment}
   \item \verb|ompt_event_target_data_map_done_async|
 
   The OpenMP runtime invokes this callback after an asynchronous variable map operation finishes execution on a device.
    Since the map operation may execute asynchronously on the device, the map done callback may occur after the map end.
   The callback executes in the context of an arbitrary task, which may not be the one that initiated the map operation.
-  This callback has type signature \verb|ompt_data_map_done_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
+  This callback has type signature \verb|ompt_data_map_end_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
   
 \item \verb|ompt_event_target_data_map_done_sync|
 
-  The OpenMP runtime invokes this callback after a synchronous variable map operation finishes execution on a device. This callback has type signature \verb|ompt_data_map_done_callback_t|.  The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
-
+  The OpenMP runtime invokes this callback after a synchronous variable map operation finishes execution on a device. This callback has type signature \verb|ompt_data_map_end_callback_t|.  The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
+\end{comment}
 
 % \item \verb|ompt_event_target_invoke_begin|
 % 
@@ -1886,6 +1884,19 @@ This inquiry function can be used
 to acquire information that can be used to align time stamps from the target device with time
 stamps from the host or other devices.
 
+The function \verb|ompt_translate_target_device_time| is used to translate a device time to a host time. The {\tt double} result for the host time has the same meaning as the {\tt double} returned from \verb|omp_get_wtime|.
+\begin{quote}
+\begin{verbatim}
+OMPT_API 
+double ompt_translate_target_device_time(
+  int device_id, 
+  ompt_target_device_time_t time
+);
+\end{verbatim}
+\end{quote}
+\noindent
+{\em Advice to tool implementers:} The accuracy of time translations will only get worse the longer they are delayed due to changes in clock speed (e.g., due to thermal issues). Prompt translation of device times to host times is recommended.
+
 \begin{comment}
 The function \verb|ompt_target_map| maps the specified number of bytes
 between host and target device according to the map type.
@@ -2560,6 +2571,13 @@ typedef enum ompt_thread_type_e {
   ompt_thread_other    = 3
 } ompt_thread_type_t;
 
+typedef enum ompt_target_task_type_e {
+  ompt_target_task_target     = 1,
+  ompt_target_task_enter_data = 2,
+  ompt_target_task_exit_data  = 3,
+  ompt_target_task_update     = 4
+} ompt_target_task_type_t;
+
 typedef enum ompt_native_mon_flags_e {
   ompt_native_data_motion_explicit     = 1,
   ompt_native_data_motion_implicit     = 2,
@@ -2589,14 +2607,10 @@ typedef enum ompt_task_dependence_flag_e {
   ompt_task_dependence_type_out   = 1,
   ompt_task_dependence_type_in    = 2,
   ompt_task_dependence_type_inout = 3,
-  
-  // a one bit field for satisfied
-  ompt_task_dependence_satisfied = 4
 } ompt_task_dependence_flag_t;
 
 typedef struct ompt_task_dependence_s {
   void *variable_addr;
-  size_t len;
   uint32_t  dependence_flags;
 } ompt_task_dependence_t
 
@@ -2659,7 +2673,7 @@ typedef void (*ompt_parallel_callback_t) ( /* for inside parallel   */
 typedef void (*ompt_new_workshare_callback_t) ( /* for workshares   */			   
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id,          /* ID of task                   */
-  void *workshare_function          /* pointer to outlined function */
+  void *codeptr                             /* return address for workshare call */
 );								    
 							   	    
 typedef void (*ompt_new_parallel_callback_t) ( /* for new parallel  */
@@ -2682,11 +2696,6 @@ typedef void (*ompt_task_callback_t) ( /* for tasks                 */
   ompt_task_id_t  task_id           /* ID of task                   */
 );
 
-typedef void (*ompt_task_switch_callback_t) ( /* for task switch    */			   
-  ompt_task_id_t suspended_task_id, /* ID of suspended task         */ 
-  ompt_task_id_t resumed_task_id    /* ID of resumed task           */
-  );								   
-
 typedef void (*ompt_new_task_callback_t) ( /* for new tasks         */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
@@ -2699,7 +2708,8 @@ typedef void (*ompt_new_target_task_callback_t) (
   ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
   ompt_task_id_t host_task_id,      /* ID of target task on host    */
   int device_id,                    /* ID of the device             */
-  void *target_task_code            /* ptr to target code           */
+  void *target_task_code,            /* ptr to target code           */
+  ompt_target_task_type_t task_type /* the type of the target task */
 );
 
 typedef void (*ompt_target_task_end_callback_t) ( 	   
@@ -2720,18 +2730,22 @@ typedef void (*ompt_new_target_data_callback_t) (
   void *target_data_code            /* ptr to target data code      */
 );
 
-typedef void (*ompt_new_data_map_callback_t) (
-  ompt_task_id_t task_id,           /* ID of encountering task      */
-  int device_id,                    /* ID of the device             */
+typedef struct ompt_map_entry_s {
   void *host_addr,                  /* host  address of the data    */
   void *device_addr,                /* device address of the data   */ 
   size_t bytes,                     /* number of bytes mapped       */
   uint32_t mapping_flags,           /* sync/async, to/from          */
-  void *target_map_code,            /* ptr to target map code       */
+} ompt_map_entry_t;
+
+typedef void (*ompt_data_map_begin_callback_t) (
+  ompt_task_id_t task_id,           /* ID of encountering task      */
+  int device_id,                    /* ID of the device             */
+  ompt_map_entry_t *items, /* the items to be mapped */
+  uint32_t nitems, /* the number of items to be mapped */
   ompt_dev_activity_id_t  map_id    /* ID for map event             */
 );
 
-typedef void (*ompt_data_map_done_callback_t) (
+typedef void (*ompt_data_map_end_callback_t) (
   int device_id,                    /* ID of the device             */
   ompt_dev_activity_id_t  map_id    /* ID for map event             */
 );
@@ -2742,6 +2756,11 @@ typedef void (*ompt_task_dependences_callback_t) (
   ompt_task_dependence_t *deps,     /* vector of task dependences   */
   int ndeps                         /* number of dependences        */
 );
+
+typedef void (*ompt_task_dependence_pair_callback_t) (                                   
+  ompt_task_id_t first_task_id,    
+  ompt_task_id_t second_task_id,        
+);  
         
 /* program */						   
 typedef void (*ompt_control_callback_t) ( /* for control            */	   
@@ -2852,20 +2871,41 @@ OMPT_API int ompt_record_native_set(
   uint32_t  flags                    /* event classes to monitor        */
 );
 
-OMPT_API int ompt_recording_start (  int device_id,  ompt_buffer_request_callback_t request,  ompt_buffer_complete_callback_t complete,);
+OMPT_API int ompt_recording_start (
+  int device_id,
+  ompt_buffer_request_callback_t request,
+  ompt_buffer_complete_callback_t complete,
+);
 
-OMPT_API int ompt_recording_stop(  int device_id);
+OMPT_API int ompt_recording_stop(
+  int device_id
+);
 
 /* target trace record processing */
-OMPT_API int ompt_buffer_cursor_advance(  ompt_buffer_t *buffer,  ompt_buffer_cursor_t current,  ompt_buffer_cursor_t *next);
+OMPT_API int ompt_buffer_cursor_advance(
+  ompt_buffer_t *buffer,
+  ompt_buffer_cursor_t current,
+  ompt_buffer_cursor_t *next
+);
 
-OMPT_API ompt_record_type_t ompt_record_get_type(  ompt_buffer_t *buffer,  ompt_buffer_cursor_t current);
+OMPT_API ompt_record_type_t ompt_record_get_type(
+  ompt_buffer_t *buffer,
+  ompt_buffer_cursor_t current
+);
 
-OMPT_API ompt_record_t *ompt_record_get(  ompt_buffer_t *buffer,  ompt_cursor_t current);
-   OMPT_API void *ompt_record_native_get(
-  ompt_buffer_t *buffer,  ompt_cursor_t current);
+OMPT_API ompt_record_t *ompt_record_get(
+  ompt_buffer_t *buffer,
+  ompt_cursor_t current
+);
+   
+OMPT_API void *ompt_record_native_get(
+  ompt_buffer_t *buffer,
+  ompt_cursor_t current
+);
   
-OMPT_API ompt_record_native_abstract_t ompt_record_native_get_abstract(  void *native_record);
+OMPT_API ompt_record_native_abstract_t ompt_record_native_get_abstract(
+  void *native_record
+);
 \end{verbatim}
 
 \clearpage  
@@ -2940,7 +2980,7 @@ typedef struct ompt_record_parallel_s {
 typedef struct ompt_record_new_workshare_s {
   ompt_parallel_id_t parallel_id;  /* ID of parallel region */
   ompt_task_id_t task_id;          /* ID of task */
-  void *workshare_function;        /* pointer to outlined function */
+  void *codeptr;        /* return address for the workshare call */
 } ompt_record_new_workshare_t;
 
 typedef struct ompt_record_new_parallel_s {
@@ -2955,10 +2995,10 @@ typedef struct ompt_record_task_s {
   ompt_task_id_t task_id; /* ID of task */
 } ompt_record_task_t;
 
-typedef struct ompt_record_task_switch_s {
-  ompt_task_id_t suspended_task_id; /* ID of suspended task */
-  ompt_task_id_t resumed_task_id;   /* ID of resumed task */
-} ompt_record_task_switch_t;
+typedef struct ompt_record_task_pair_s {
+  ompt_task_id_t first_task_id; 
+  ompt_task_id_t second_task_id;  
+} ompt_record_task_pair_t;
 
 typedef struct ompt_record_new_task_s {
   ompt_task_id_t parent_task_id;   /* ID of parent task */
@@ -2982,7 +3022,7 @@ typedef struct ompt_record_new_target_data_s {
   void *target_data_code            /* ptr to target data code      */
 } ompt_record_new_target_data_t;
  
-typedef struct ompt_record_new_data_map_s {
+typedef struct ompt_record_data_map_begin_s {
   ompt_task_id_t task_id,           /* ID of encountering task      */
   int device_id,                    /* ID of the device             */
   void *host_addr,                  /* host  address of the data    */
@@ -2990,7 +3030,7 @@ typedef struct ompt_record_new_data_map_s {
   size_t bytes,                     /* number of bytes mapped       */
   uint32_t mapping_flags,           /* sync/async, to/from          */
   void *target_map_code             /* ptr to target map code       */
-} ompt_record_new_data_map_t;
+} ompt_record_data_map_begin_t;
 
 typedef struct ompt_record_data_map_done_s {
   ompt_task_id_t task_id,           /* ID of current task           */
