@@ -456,7 +456,7 @@ after a parallel
 region executes its closing synchronization barrier but before
 resuming execution of the parent task.  The callback executes in
 the context of the task that encountered the parallel construct.
-This callback has type signature \verb|ompt_end_parallel_callback_t|. 
+This callback has type signature \verb|ompt_parallel_end_callback_t|. 
 
 \end{description}
 
@@ -1892,11 +1892,12 @@ Function \verb|ompt_get_device_info|, whose type signature is shown below, is us
 OMPT_API int ompt_get_device_info(
   int device_id, 
   const char **type, 
-  ompt_function_lookup_t *lookup
+  ompt_function_lookup_t *lookup,
+  const char *documentation
 );
 \end{verbatim}
 \end{quote}
-If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. If a non-NULL pointer is passed for \verb|type|, the runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of such a device. If a non-NULL pointer is passed for \verb|lookup|, the runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The names of any device-specific API functions available and their type signatures are outside the scope of the OMPT specification. 
+If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. If a non-NULL pointer is passed for \verb|type|, the runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of such a device. If a non-NULL pointer is passed for \verb|lookup|, the runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  Documentation for the names and type signatures of any device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|documentation| that has embedded newlines to keep the text to 80 characters per line. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the API or pointers to external documentation.
 
 \begin{comment}
 Function \verb|ompt_get_target_id| returns the ID of the current target region:
@@ -2159,7 +2160,7 @@ When a target task begins, it is assigned an ID. Each activity, e.g., a kernel i
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_correlation_t *ompt_trace_get_correlation(
+OMPT_API ompt_trace_correlation_t *ompt_trace_get_correlation(
   ompt_buffer_t *buffer, 
   ompt_trace_cursor_t current
 );
@@ -2771,7 +2772,7 @@ typedef void (*ompt_parallel_callback_t) ( /* for inside parallel   */
   ompt_task_id_t  task_id           /* ID of task                   */
 );
 
-typedef void (*ompt_end_parallel_callback_t) (
+typedef void (*ompt_parallel_end_callback_t) (
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t task_id,           /* ID of task                   */
   ompt_invoker_t invoker            /* who invokes master task?     */
@@ -2978,17 +2979,17 @@ OMPT_API int ompt_trace_cursor_advance(
   ompt_trace_cursor_t *next
 );
 
-OMPT_API ompt_record_type_t ompt_trace_get_type(
+OMPT_API ompt_trace_type_t ompt_trace_get_type(
   ompt_buffer_t *buffer,
   ompt_trace_cursor_t current
 );
 
-OMPT_API ompt_record_t *ompt_trace_get_ompt(
+OMPT_API ompt_trace_ompt_t *ompt_trace_get_ompt(
   ompt_buffer_t *buffer,
   ompt_trace_cursor_t current
 );
 
-OMPT_API void *ompt_trace_get_correlation(
+OMPT_API ompt_trace_correlation_t *ompt_trace_get_correlation(
   ompt_buffer_t *buffer,
   ompt_trace_cursor_t current
 );
@@ -2998,7 +2999,7 @@ OMPT_API void *ompt_trace_get_native(
   ompt_trace_cursor_t current
 );
   
-OMPT_API ompt_record_native_abstract_t ompt_trace_get_native_abstract(
+OMPT_API ompt_trace_native_abstract_t ompt_trace_get_native_abstract(
   void *native_record
 );
 \end{verbatim}
@@ -3014,7 +3015,7 @@ typedef enum {
   ompt_record_correlation,
   ompt_record_native,
   ompt_record_invalid
-} ompt_record_type_t; 
+} ompt_trace_type_t; 
 
 /* native record abstract */
 typedef struct ompt_record_native_abstract_s {
@@ -3030,7 +3031,7 @@ typedef struct ompt_record_native_abstract_s {
 typedef struct ompt_record_correlation_s {
   ompt_task_id_t host_task_id;         
   ompt_dev_activity_t dev_task_id;
-} ompt_record_correlation_t;
+} ompt_trace_correlation_t;
 
 /* OMPT record */
 typedef struct ompt_record_ompt_s {
@@ -3050,7 +3051,7 @@ typedef struct ompt_record_ompt_s {
     ompt_record_task_switch_t task_switch;     /* for task switch     */
     ompt_record_task_begin_t new_task;           /* for new tasks       */
   } record;
-} ompt_record_ompt_t;
+} ompt_trace_ompt_t;
 
 /* record types */
 typedef struct ompt_record_thread_s {
