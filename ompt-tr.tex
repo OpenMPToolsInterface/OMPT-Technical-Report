@@ -2260,7 +2260,7 @@ When an OpenMP runtime system receives a non-NULL pointer to a tool initializer 
 \begin{verbatim}
 typedef void (*ompt_initialize_fn_t) (
   ompt_function_lookup_t lookup,
-  const char *runtime_version, 
+  const char *runtime_version,
   unsigned int ompt_version
 );
 \end{verbatim}
@@ -2639,6 +2639,10 @@ typedef uint32_t ompt_lock_hint_t; /* takes the values of typedef uint32_t omp_l
 
 typedef uint32_t ompt_bool; /* takes the values 0 (false) or 1 (true) */
 
+typedef void ompt_buffer_t; /* buffer where device events my be recorded */
+
+typedef void* ompt_trace_cursor_t; /* pointer to a buffer element */
+
 typedef enum ompt_thread_type_e {
   ompt_thread_initial  = 1,
   ompt_thread_worker   = 2,
@@ -2859,18 +2863,23 @@ typedef void (*ompt_callback_t)(    /* for shutdown                 */
   void
 ); 
 
-/* target trace buffer management routines */
-typedef void (*ompt_target_buffer_request_callback_t) (
-  ompt_target_event_t** buffer,   /* pointer to host memory to store target records */
-  size_t* bytes                   /* buffer size in bytes */
+/* trace buffer management routines */
+typedef void (*ompt_buffer_request_callback_t) (
+  int device_id,                  /* target device                  */
+  ompt_buffer_t** buffer,         /* pointer to host memory to store 
+                                     target records                 */
+  size_t* bytes                   /* buffer size in bytes           */
 );
   
-typedef void (*ompt_target_buffer_complete_callback_t) (
-  ompt_target_event_t* buffer,   /* pointer to buffer with target event records */
-  int device_id,                 /* target device */
-  size_t valid_bytes             /* number of valid bytes in the buffer */
+typedef void (*ompt_buffer_complete_callback_t) (
+  int device_id,             /* target device                       */
+  ompt_buffer_t* buffer,     /* pointer to buffer with target 
+                                  event records                     */
+  size_t bytes,              /* number of valid bytes in the buffer */
+  ompt_trace_cursor_t begin  /* first entry of the buffer           */
 );
 \end{verbatim}
+%Tim: Do we really need ompt_buffer_{request,complete}_callback_t here? It is already defined above.
 
 \paragraph{Placeholder callback signature.} The type \verb|ompt_callback_t| is also a placeholder signature used only by the tool callback registration interface. 
 Only one callback registration function is defined and it expects that the callback supplied will be cast into type \verb|ompt_callback_t|, regardless of its actual type signature. This approach avoids the need for a separate registration routine for each unique tool callback signature. 
@@ -3162,9 +3171,9 @@ Function \verb|ompt_tool| returns a pointer to a tool initializer, whose type si
 
 \begin{verbatim}
 typedef void (*ompt_initialize_fn_t) (
+  ompt_function_lookup_t lookup,
   const char *runtime_version, 
-  unsigned int ompt_version,
-  ompt_function_lookup_t lookup 
+  unsigned int ompt_version
 );
 \end{verbatim}
 
