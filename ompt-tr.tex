@@ -2496,17 +2496,20 @@ typedef enum {
   ompt_state_wait_critical          = 0x62, /* waiting for critical       */
   ompt_state_wait_atomic            = 0x63, /* waiting for atomic         */
   ompt_state_wait_ordered           = 0x64, /* waiting for ordered        */
+  
+  /* target (112..127) */
+  ompt_state_wait_target            = 0x70, /* waiting for target         */ 
+  ompt_state_wait_target_data       = 0x71, /* waiting for target data    */ 
+  ompt_state_wait_target_update     = 0x72, /* waiting for target update  */ 
 
-  /* misc (112.127) */
-  ompt_state_undefined              = 0x70, /* undefined thread state     */
-  ompt_state_first                  = 0x71, /* initial enumeration state  */
+  /* misc (128..143) */
+  ompt_state_undefined              = 0x80, /* undefined thread state     */
+  ompt_state_first                  = 0x81, /* initial enumeration state  */
 } ompt_state_t;
 \end{verbatim}
 \clearpage
 \subsection{Runtime Event Callbacks}
 \label{appendix:ompt-types:events}
-
-{\color{red} todo: \verb|target_task_end_async|, target host id and target device id correlation records}
 
 When OMPT support for a tool is enabled, 
 OMPT enables a tool to indicate interest in receiving notification about certain OpenMP runtime events by registering callbacks. When those events occur during execution, OMPT will invoke the registered callback in the appropriate thread context.
@@ -2614,13 +2617,11 @@ typedef enum {
   ompt_event_target_data_begin        = 65, /* target data begin          */
   ompt_event_target_data_end          = 66, /* target data end            */
 
-  ompt_event_target_update_begin      = 67, /* target update begin        */
-  ompt_event_target_update_end        = 68, /* target update end          */
-
-  ompt_event_target_data_map_begin    = 69, /* before data mapping        */
-  ompt_event_target_data_map_end      = 70, /* after data mapping         */
+  ompt_event_target_data_map_begin    = 67, /* before data mapping        */
+  ompt_event_target_data_map_end      = 68, /* after data mapping         */
   
-  ompt_event_task_dependence          = 71  /* new task-dependence        */
+  ompt_event_task_dependences         = 69, /* new task dependences        */
+  ompt_event_task_dependence_pair     = 70  /* new task dependence pair    */
 } ompt_event_t;
 \end{verbatim}
 
