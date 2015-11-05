@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised October 5, 2015}
+\date{Revised November 4, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -2069,9 +2069,10 @@ The \emph{buffer complete} callback has the following type signature:
 \begin{verbatim}
 typedef void (*ompt_target_buffer_complete_callback_t) (
   int device_id, 
-  ompt_target_buffer_t *buffer,
+  const ompt_target_buffer_t *buffer,
   size_t bytes,
-  ompt_target_buffer_cursor_t begin
+  ompt_target_buffer_cursor_t begin,
+  ompt_target_buffer_cursor_t end
 );
 \end{verbatim}
 \end{quote}
@@ -2749,22 +2750,22 @@ typedef void (*ompt_atomic_callback_t) ( /* for wait                */
 typedef void (*ompt_sync_callback_t) ( 			   
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id,          /* ID of task                   */
-  void *codeptr_ra                  /* return address of api call   */
+  const void *codeptr_ra            /* return address of api call   */
 );
 
 /* parallel & workshares */									    
 typedef void (*ompt_workshare_begin_callback_t) ( /* for workshares   */			   
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id,          /* ID of task                   */
-  void *codeptr_ra                  /* return address of api call   */
+  const void *codeptr_ra            /* return address of api call   */
 );								    
 							   	    
 typedef void (*ompt_parallel_begin_callback_t) ( /* for new parallel  */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_frame_t *parent_task_frame,  /* frame data of parent task    */
+  const ompt_frame_t *parent_task_frame,  /* frame data of parent task    */
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   uint32_t requested_team_size,     /* requested number of threads  */
-  void *codeptr_ofn,                /* pointer to outlined function */
+  const void *codeptr_ofn,          /* pointer to outlined function */
   ompt_invoker_t invoker            /* who invokes master task?     */
 );
 
@@ -2786,17 +2787,17 @@ typedef void (*ompt_task_callback_t) ( /* for tasks                 */
 
 typedef void (*ompt_task_begin_callback_t) ( /* for new tasks         */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  const ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
   ompt_task_id_t new_task_id,       /* ID of created task           */
-  void *codeptr_ofn           /* pointer to outlined function */
+  const void *codeptr_ofn           /* pointer to outlined function */
 );
   
 typedef void (*ompt_target_task_begin_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  const ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
   ompt_task_id_t host_task_id,      /* ID of target task on host    */
   int device_id,                    /* ID of the device             */
-  void *target_task_code,            /* ptr to target code           */
+  const void *target_task_code,     /* ptr to target code           */
   ompt_target_task_type_t task_type /* the type of the target task */
 );
 
@@ -2815,7 +2816,7 @@ typedef void (*ompt_lock_callback_t) (
 typedef void (*ompt_target_data_begin_callback_t) ( 
   ompt_task_id_t task_id,           /* ID of encountering task      */
   int device_id,                    /* ID of the device             */
-  void *codeptr_ra                  /* return address of api call   */
+  const void *codeptr_ra            /* return address of api call   */
 );
 
 typedef struct ompt_target_map_entry_s {
@@ -2828,21 +2829,21 @@ typedef struct ompt_target_map_entry_s {
 typedef void (*ompt_target_data_map_begin_callback_t) (
   ompt_task_id_t task_id,           /* ID of encountering task      */
   int device_id,                    /* ID of the device             */
-  ompt_target_map_entry_t *items, /* the items to be mapped */
-  uint32_t nitems, /* the number of items to be mapped */
-  ompt_target_activity_id_t  map_id    /* ID for map event             */
+  const ompt_target_map_entry_t *items, /* the items to be mapped   */
+  uint32_t nitems,                  /* the number of items to be mapped */
+  ompt_target_activity_id_t  map_id /* ID for map event             */
 );
 
 typedef void (*ompt_target_data_map_end_callback_t) (
   int device_id,                    /* ID of the device             */
-  ompt_target_activity_id_t  map_id    /* ID for map event             */
+  ompt_target_activity_id_t  map_id /* ID for map event             */
 );
 
 /* task dependences */
 typedef void (*ompt_task_dependences_callback_t) (                                   
-  ompt_task_id_t task_id,           /* ID of task with dependences  */
-  ompt_task_dependence_t *deps,     /* vector of task dependences   */
-  int ndeps                         /* number of dependences        */
+  ompt_task_id_t task_id,            /* ID of task with dependences  */
+  const ompt_task_dependence_t *deps,/* vector of task dependences   */
+  int ndeps                          /* number of dependences        */
 );
 
 typedef void (*ompt_task_dependence_pair_callback_t) (                                   
@@ -2856,20 +2857,23 @@ typedef void (*ompt_control_callback_t) ( /* for control            */
   uint64_t modifier                 /* modifier of control call     */
 );
   
-typedef void (*ompt_callback_t)(    /* for shutdown                 */	
+typedef void (*ompt_callback_t)(    /* for shutdown                 */
   void
 ); 
 
 /* target trace buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
-  ompt_target_buffer_t** buffer,   /* pointer to host memory to store target records */
-  size_t *bytes                   /* buffer size in bytes */
+  ompt_target_buffer_t** buffer,    /* pointer to host memory to store target records */
+  size_t *bytes                     /* buffer size in bytes */
 );
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
-  ompt_target_buffer_t *buffer,   /* pointer to buffer with target event records */
-  int device_id,                 /* target device */
-  size_t valid_bytes             /* number of valid bytes in the buffer */
+  int device_id,                     /* target device                                 */
+  const ompt_target_buffer_t *buffer,/* pointer to buffer with target event records   */
+  size_t bytes,                      /* number of valid bytes in the buffer           */
+  ompt_target_buffer_cursor_t begin, /* position of first record                      */
+  ompt_target_buffer_cursor_t end    /* position after last record                    */ 
+); 
 );
 \end{verbatim}
 
