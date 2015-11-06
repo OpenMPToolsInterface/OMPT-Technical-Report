@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised November 4, 2015}
+\date{Revised November 6, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -1886,28 +1886,21 @@ OMPT_API int ompt_get_num_devices(void);
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, the return value is undefined. {\it This function is async signal safe.}
 
-Function \verb|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about an attached device. 
+Function \verb|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about the attached device with  index \verb|device_id|. 
 \begin{quote}
 \begin{verbatim}
 OMPT_API int ompt_target_get_device_info(
   int device_id, 
   const char **type, 
+  ompt_target_device_t **device,
   ompt_function_lookup_t *lookup,
   const char *documentation
 );
 \end{verbatim}
 \end{quote}
-If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. If a non-NULL pointer is passed for \verb|type|, the runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of such a device. If a non-NULL pointer is passed for \verb|lookup|, the runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  Documentation for the names and type signatures of any device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|documentation| that has embedded newlines to keep the text to 80 characters per line. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the API or pointers to external documentation.
+If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. If a non-NULL pointer is passed for \verb|type|, the runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of such a device. A non-NULL pointer must be provided for \verb|device|. The runtime will set \verb|*device| to point to an opaque object that represents the target device instance. The device pointer returned will need to be supplied as an argument of calls to device-specific functions in the target interface to identify the device being addressed.
 
-\begin{comment}
-Function \verb|ompt_target_get_id| returns the ID of the current target region:
-\begin{quote}
-\begin{verbatim}
-OMPT_API ompt_target_id_t ompt_target_get_id(void);
-\end{verbatim}
-\end{quote}
-This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in a target region, then it will return a value of 0. {\it This function is async signal safe.}
-\end{comment}
+A tool must pass a non-NULL pointer for \verb|lookup|.  The runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The \verb|lookup| function for a device will enable a tool to look up all functions marked \verb|OMPT_TARG_API|.  If a named function is not available in an OpenMP runtime’s implementation of OMPT, lookup will return NULL. Documentation for the names and type signatures of any additional device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|documentation| that has embedded newlines to keep the text to 80 characters per line. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the device-specific API or pointers to external documentation.
 
 Function \verb|ompt_target_get_device_id| returns the device identifier for the active target device:
 \begin{quote}
@@ -1924,8 +1917,8 @@ use different clock generators. For this reason,  there may be no common time ba
 Function \verb|ompt_target_get_time|, with the type signature below returns the current time stamp on the specified target device:
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_target_time_t ompt_target_get_time(
-  int device_id
+OMPT_TARG_API ompt_target_time_t ompt_target_get_time(
+  ompt_target_device_t *device /* target device handle */
 );
 \end{verbatim}
 \end{quote}
@@ -1937,9 +1930,8 @@ stamps from the host or other devices.
 The function \verb|ompt_target_translate_time| is used to translate a device time to a host time. The {\tt double} result for the host time has the same meaning as the {\tt double} returned from \verb|omp_get_wtime|.
 \begin{quote}
 \begin{verbatim}
-OMPT_API 
-double ompt_target_translate_time(
-  int device_id, 
+OMPT_TARG_API double ompt_target_translate_time(
+  ompt_target_device_t *device, /* target device handle */
   ompt_target_time_t time
 );
 \end{verbatim}
@@ -1984,7 +1976,7 @@ Target devices typically operate asynchronously with respect to a host. It may n
  Section~\ref{sec:trace-event}  describes how to enable or disable tracing on a target device for specific OMPT events. 
   Section~\ref{sec:trace-event-native}  describes how to enable or disable tracing on a target device for specific native events. Section~\ref{sec:start-stop-recording} describes how to start and stop event tracing on a device. 
   
-All functions in the target device tracing control API described in this section are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool will obtain pointers to these functions.
+Some functions in the target device tracing control API described in this section are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool will obtain pointers to these functions.
 
 
 
@@ -1994,8 +1986,8 @@ Function \verb|ompt_target_set_trace_ompt| allows a tool to enable or disable th
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_set_trace_ompt(
-  int device_id,                     /* target device id          */
+OMPT_TARG_API int ompt_target_set_trace_ompt(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool enable,                  /* enable or disable         */
   ompt_record_type_t rtype           /* a record type             */
 );
@@ -2030,8 +2022,8 @@ knowledge about an attached device. If a tool knows how to program a particular 
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_set_trace_native(
-  int device_id,                     /* target device id                */
+OMPT_TARG_API int ompt_target_set_trace_native(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool enable,                  /* enable or disable               */
   uint32_t  flags                    /* event classes to monitor        */
 );
@@ -2086,8 +2078,8 @@ Under normal operating conditions, every event buffer provided to a device by a 
 To start, pause, or stop tracing for a specific device, a tool calls the functions \verb|ompt_target_start_trace|, \verb|ompt_target_pause_trace|, or \verb|ompt_target_stop_trace| with the following type signatures:
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_start_trace(
-  int device_id, 
+OMPT_TARG_API int ompt_target_start_trace(
+  ompt_target_device_t *device, /* target device handle */
   ompt_target_buffer_request_callback_t request,
   ompt_target_buffer_complete_callback_t complete,
 );
@@ -2096,7 +2088,8 @@ OMPT_API int ompt_target_start_trace(
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_pause_trace(
+OMPT_TARG_API int ompt_target_pause_trace(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool begin_pause
 );
 \end{verbatim}
@@ -2104,8 +2097,8 @@ OMPT_API int ompt_target_pause_trace(
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_stop_trace(
-  int device_id 
+OMPT_TARG_API int ompt_target_stop_trace(
+  ompt_target_device_t *device /* target device handle */
 );
 \end{verbatim}
 \end{quote}
@@ -2120,7 +2113,7 @@ event records deposited in a buffer by a device. Function \verb|ompt_target_adva
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_advance_buffer_cursor(
+OMPT_TARG_API int ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current, 
   ompt_target_buffer_cursor_t *next
@@ -2132,7 +2125,7 @@ advances from one record in the specified buffer to the next. It returns 0 if th
 The function \verb|ompt_target_buffer_get_record_type| enables a tool to inspect the type of a record to determine whether it is both a known type and worth processing further. 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_type_t ompt_target_buffer_get_record_type(
+OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
@@ -2149,7 +2142,7 @@ Section~\ref{sec:native-record-data} describes the interface to use for accessin
 To inspect the information for an OMPT record, a tool invokes the following function:
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
+OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
@@ -2161,7 +2154,7 @@ When a target task begins, it is assigned an ID. Each activity, e.g., a kernel i
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
+OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
@@ -2174,7 +2167,7 @@ OMPT_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
 To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with buffer:
 \begin{quote}
 \begin{verbatim}
-OMPT_API void *ompt_target_buffer_get_record_native(
+OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
@@ -2186,7 +2179,8 @@ A subsequent call to \verb|ompt_target_buffer_get_record_native| may overwrite t
 Function  \verb|ompt_target_buffer_get_record_native_abstract| can be used by a tool to acquire basic information about a native record and handle it even without full support for  native records from the associated device.
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_record_native_abstract_t ompt_target_buffer_get_record_native_abstract(
+OMPT_TARG_API ompt_record_native_abstract_t *
+ompt_target_buffer_get_record_native_abstract(
   void *native_record 
 );
 
@@ -2273,7 +2267,7 @@ The version of OMPT described by this document is known as version 2.
 
 The two principal duties of a tool initializer are looking up pointers to all OMPT API functions that the tool uses and to registering tool callbacks.  These two operations are described below.
 
-\paragraph{Looking up functions in the OMPT API.} The third argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to OMPT interface functions.
+\paragraph{Looking up functions in the OMPT API.} The third argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to all OMPT interface functions.
 The type signature for  \verb|lookup| is:
 
 \begin{quote}
@@ -2641,6 +2635,8 @@ typedef uint32_t ompt_lock_hint_t; /* takes the values of typedef uint32_t omp_l
 
 typedef uint32_t ompt_bool; /* takes the values 0 (false) or 1 (true) */
 
+typedef void ompt_target_device_t;   /* opaque object representing a target device */
+
 typedef enum ompt_thread_type_e {
   ompt_thread_initial  = 1,
   ompt_thread_worker   = 2,
@@ -2846,10 +2842,10 @@ typedef void (*ompt_task_dependences_callback_t) (
   int ndeps                          /* number of dependences        */
 );
 
-typedef void (*ompt_task_dependence_pair_callback_t) (                                   
-  ompt_task_id_t first_task_id,    
-  ompt_task_id_t second_task_id,        
-);  
+typedef void (*ompt_task_pair_callback_t) (
+  ompt_task_id_t first_task_id,
+  ompt_task_id_t second_task_id
+);
         
 /* program */						   
 typedef void (*ompt_control_callback_t) ( /* for control            */	   
@@ -2944,67 +2940,73 @@ OMPT_API int ompt_target_get_device_id(         /* return active target device I
   void
 );
 
-OMPT_API ompt_target_time_t ompt_target_get_time( /* return current time
+OMPT_TARG_API ompt_target_time_t ompt_target_get_time( /* return current time
                                                                    stamp of a device     */
-  int device_id                  /* the target device of interest                        */
+  ompt_target_device_t *device /* target device handle */
+);
+
+OMPT_TARG_API double ompt_target_translate_time(
+  ompt_target_device_t *device, /* target device handle */
+  ompt_target_time_t time
 );
 
 /* target tracing control */
-OMPT_API int ompt_target_set_trace_ompt(
-  int device_id,                     /* target device id          */
+OMPT_TARG_API int ompt_target_set_trace_ompt(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool enable,                   /* enable or disable         */
   ompt_record_type_t rtype           /* a record type             */
 );
 
-OMPT_API int ompt_target_set_trace_native(
-  int device_id,                     /* target device id                */
+OMPT_TARG_API int ompt_target_set_trace_native(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool enable,                 /* enable or disable               */
   uint32_t  flags                    /* event classes to monitor        */
 );
 
-OMPT_API int ompt_target_start_trace (
-  int device_id,
+OMPT_TARG_API int ompt_target_start_trace (
+  ompt_target_device_t *device, /* target device handle */
   ompt_target_buffer_request_callback_t request,
   ompt_target_buffer_complete_callback_t complete,
 );
 
-OMPT_API int ompt_target_pause_trace(
-  int device_id
+OMPT_TARG_API int ompt_target_pause_trace(
+  ompt_target_device_t *device, /* target device handle */
   ompt_bool begin_pause
 );
 
-OMPT_API int ompt_target_stop_trace(
-  int device_id
+OMPT_TARG_API int ompt_target_stop_trace(
+  ompt_target_device_t *device /* target device handle */
 );
 
 /* target trace record processing */
-OMPT_API int ompt_target_advance_buffer_cursor(
+OMPT_TARG_API int ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer,
   ompt_target_buffer_cursor_t current,
   ompt_target_buffer_cursor_t *next
 );
 
-OMPT_API ompt_record_type_t ompt_target_buffer_get_record_type(
+OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
   ompt_target_buffer_t *buffer,
   ompt_target_buffer_cursor_t current
 );
 
-OMPT_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
+OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
   ompt_target_buffer_t *buffer,
   ompt_target_buffer_cursor_t current
 );
 
-OMPT_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
+OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
   ompt_target_buffer_t *buffer,
   ompt_target_buffer_cursor_t current
 );
    
-OMPT_API void *ompt_target_buffer_get_record_native(
+OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer,
   ompt_target_buffer_cursor_t current
 );
   
-OMPT_API ompt_trace_native_abstract_t ompt_target_buffer_get_record_native_abstract(
+OMPT_TARG_API ompt_trace_native_abstract_t *
+ompt_target_buffer_get_record_native_abstract(
   void *native_record
 );
 \end{verbatim}
@@ -3051,14 +3053,14 @@ typedef struct ompt_record_ompt_s {
   ompt_target_activity_id_t dev_task_id;     /* link back to its host context     */
   union
   {
-    ompt_record_thread_t;                      /* for thread          */
-    ompt_record_thread_type_t;                 /* for thread type     */
-    ompt_record_wait_t;                        /* for wait            */
-    ompt_record_parallel_t parallel;           /* for inside parallel */
+    ompt_record_thread_t;                        /* for thread          */
+    ompt_record_thread_type_t;                   /* for thread type     */
+    ompt_record_wait_t;                          /* for wait            */
+    ompt_record_parallel_t parallel;             /* for inside parallel */
     ompt_record_workshare_begin_t new_workshare; /* for workshares      */
     ompt_record_parallel_begin_t new_parallel;   /* for new parallel    */
-    ompt_record_task_t task;                   /* for tasks           */
-    ompt_record_task_switch_t task_switch;     /* for task switch     */
+    ompt_record_task_t task;                     /* for tasks           */
+    ompt_record_task_pair_t task_switch;         /* for task switch     */
     ompt_record_task_begin_t new_task;           /* for new tasks       */
   } record;
 } ompt_record_ompt_t;
