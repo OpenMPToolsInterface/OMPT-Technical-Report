@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised November 6, 2015}
+\date{Revised November 12, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -1884,7 +1884,7 @@ Function \verb|ompt_get_num_devices| returns the number of visible devices:
 OMPT_API int ompt_get_num_devices(void);
 \end{verbatim}
 \end{quote}
-This inquiry function is only supported on the host. If the inquiry function is invoked by a thread executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, the return value is undefined. {\it This function is async signal safe.}
+This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, the return value is undefined. {\it This function is async signal safe.}
 
 Function \verb|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about the attached device with  index \verb|device_id|. 
 \begin{quote}
@@ -1967,22 +1967,20 @@ Target devices typically operate asynchronously with respect to a host. It may n
 \begin{itemize}
 \item a target device may execute asynchronously from the host,
 \item the target device records events that occur during its execution in a trace buffer,
-\item when a trace buffer fills on a device,  the device provides it to the OpenMP runtime  on the host,
-\item the OpenMP runtime  interrupts execution on the host by invoking a tool-supplied callback function to request a new trace buffer,
-\item the OpenMP runtime  interrupts execution on the host by invoking a tool-supplied callback function to process and empty a trace buffer as necessary or useful.
+\item when a trace buffer fills on a device (or it is otherwise useful to flush the buffer),  the device provides it to a tool on the host, by invoking a tool-supplied callback function to process and empty the buffer,
+\item when the target device needs a new trace buffer, it invokes a tool-supplied callback function to request a new buffer,
 \end{itemize}
 
 
  Section~\ref{sec:trace-event}  describes how to enable or disable tracing on a target device for specific OMPT events. 
   Section~\ref{sec:trace-event-native}  describes how to enable or disable tracing on a target device for specific native events. Section~\ref{sec:start-stop-recording} describes how to start and stop event tracing on a device. 
   
-Some functions in the target device tracing control API described in this section are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime system implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool will obtain pointers to these functions.
-
+Some functions in the target device tracing control API described in this section are marked with \verb|OMPT_TARG_API|. These represent function pointers that should be obtained from a target device by invoking the \verb|lookup| function (provided by the target  as a return value to function \verb|ompt_target_get_device_info|) and passing it the name of the function of interest.
 
 
 \subsection{Enabling and Disabling Tracing for OMPT Record Types}
 \label{sec:trace-event}
-Function \verb|ompt_target_set_trace_ompt| allows a tool to enable or disable the recording of one or more types of trace record types:
+A tool uses function \verb|ompt_target_set_trace_ompt| to enable or disable the recording of one or more types of OMPT trace record types:
 
 \begin{quote}
 \begin{verbatim}
@@ -1993,10 +1991,11 @@ OMPT_TARG_API int ompt_target_set_trace_ompt(
 );
 \end{verbatim}
 \end{quote}
-The argument \verb|device_id| indicates the target device whose performance monitoring may be altered by invoking this function. The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| may be enabled or disabled by this invocation.
-Actual record types are specified using positive numbers; an \verb|rtype| of  0 indicates that all record types will be enabled or disabled.
+The argument \verb|device| is a handle for the target device whose performance monitoring may be altered by invoking this function. 
+The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| may be enabled or disabled by this invocation.
+Actual record types are specified using positive numbers; an \verb|rtype| of 0 indicates that all record types will be enabled or disabled.
 % If the function \verb|ompt_record_set_t| is called for a device for which recording is currently active, its behavior is undefined.
-
+Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|.
 \begin{table}
 \centering
 \begin{tabular}{|l|l|}
@@ -2012,13 +2011,13 @@ return code & meaning \\\hline
 \label{table:record_set}
 \end{table}
 
-Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|.
+
 
 
 \subsection{Enabling and Disabling Tracing for Native Record Types}
 \label{sec:trace-event-native}
-Function \verb|ompt_target_set_trace_native| allows a tool to enable or disable the recording of native trace records for a device. This interface is designed for use by a tool with no 
-knowledge about an attached device. If a tool knows how to program a particular attached device, it may opt to invoke native control functions direction using pointers obtained through the lookup function associated with the device.
+A tool uses function \verb|ompt_target_set_trace_native| to enable or disable the recording of native trace records for a device. This interface is designed for use by a tool with no 
+knowledge about an attached device. If a tool knows how to program a particular attached device, it may opt to invoke native control functions direction using pointers obtained through the \verb|lookup| function associated with the device and described in the \verb|documentation| string that is returned by \verb|ompt_target_get_device_info|.
 
 \begin{quote}
 \begin{verbatim}
@@ -2029,7 +2028,8 @@ OMPT_TARG_API int ompt_target_set_trace_native(
 );
 \end{verbatim}
 \end{quote}
-The argument \verb|device_id| indicates the target device whose performance monitoring may be altered by invoking this function. The boolean \verb|enable| indicates whether recording of events may be enabled or disabled by this invocation.
+The argument \verb|device| is a handle for the target device whose performance monitoring may be altered by invoking this function. 
+The boolean \verb|enable| indicates whether recording of events may be enabled or disabled by this invocation.
 The kinds of native device monitoring to enable or disable are specified by \verb|flags|. Each kind of monitoring is specified by a flag bit. Flags can be composed by using logical {\tt or}  to combine enumeration values from type \verb|ompt_native_mon_flags_t|.
 
 % If the function \verb|ompt_record_native_set| is called for a device for which recording is currently active, its behavior is undefined.
@@ -2037,7 +2037,7 @@ The kinds of native device monitoring to enable or disable are specified by \ver
 \subsection{Start and Stop Recording Traces}
 \label{sec:start-stop-recording}
 
-To start recording a tool needs to register a \emph{buffer request} callback that will supply a device with a buffer to deposit events and a \emph{buffer complete} callback that will be invoked by the OpenMP runtime system to empty a buffer containing event records. A device's offloading runtime library is responsible for invoking these callbacks on a thread that is not an OpenMP master or worker. {\em The buffer request and completion callbacks are not required to  be async-signal safe.}
+To start recording, a tool needs to register a \emph{buffer request} callback that will supply a device with a buffer to deposit events and a \emph{buffer complete} callback that will be invoked by the OpenMP runtime system to empty a buffer containing event records. A device's offloading runtime library is responsible for invoking these callbacks on a thread that is not an OpenMP master or worker. {\em The buffer request and completion callbacks are not required to  be async-signal safe.}
 
 The \emph{buffer request} callback has the following type signature:
 \begin{quote}
@@ -2054,7 +2054,7 @@ As necessary, the OpenMP runtime will asynchronously invoke \verb|ompt_target_bu
 % The argument \verb|buffer| to the buffer request callback is the address of a pointer to a buffer. 
 A tool should set \verb|*buffer| to point to a buffer where device events may be recorded and \verb|*bytes| to the length of that buffer.
 %The argument \verb|bytes| is a pointer to a \verb|size_t| that indicates the size of the buffer a tool is providing for the device to fill with trace events. 
-A buffer request callback  may set \verb|*bytes| to 0 if it does not want to provide a buffer for any reason. If a callback sets \verb|*bytes| to 0, further recording of events for the device will be disabled until the next invocation of \verb|ompt_target_start_trace|. This will cause the OpenMP runtime to drop future records for a device until recording is restarted.
+A buffer request callback  may set \verb|*bytes| to 0 if it does not want to provide a buffer for any reason. If a callback sets \verb|*bytes| to 0, further recording of events for the device will be disabled until the next invocation of \verb|ompt_target_start_trace|. This will cause the target device to drop future trace records until recording is restarted.
 
 The \emph{buffer complete} callback has the following type signature: 
 \begin{quote}
@@ -2068,14 +2068,15 @@ typedef void (*ompt_target_buffer_complete_callback_t) (
 );
 \end{verbatim}
 \end{quote}
-The OpenMP runtime triggers \verb|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
+A target device triggers a call to \verb|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
 The argument \verb|device_id| indicates the device whose events the buffer contains. The argument \verb|buffer| is the address of a buffer previously allocated by the \emph{buffer request} callback. The argument \verb|bytes| indicates the full size of the buffer. The arguments \verb|begin| and \verb|end|, respectively, are opaque cursors that indicates the position at the beginning of the first record in the buffer and the position after the last record in the buffer. If \verb|begin| is equal to \verb|end|, the buffer is empty. 
 % \marginpar{What thread will execute these callbacks? Should it be specified? When are these callbacks permitted and prohibited?}
 
 % It is implementation-defined when an OpenMP runtime triggers this callback. 
 Under normal operating conditions, every event buffer provided to a device by a \emph{buffer request} callback will receive a \emph{buffer complete} callback before the OpenMP runtime shuts down. If an exceptional condition terminates  execution of an OpenMP program, the OpenMP runtime may choose to not provide a \emph{buffer complete} callback for buffers provided to any device.
 
-To start, pause, or stop tracing for a specific device, a tool calls the functions \verb|ompt_target_start_trace|, \verb|ompt_target_pause_trace|, or \verb|ompt_target_stop_trace| with the following type signatures:
+To start, pause, or stop tracing for a specific target device associated with the handle \verb|device|, 
+a tool calls the functions \verb|ompt_target_start_trace|, \verb|ompt_target_pause_trace|, or \verb|ompt_target_stop_trace| with the following type signatures:
 \begin{quote}
 \begin{verbatim}
 OMPT_TARG_API int ompt_target_start_trace(
@@ -2103,13 +2104,13 @@ OMPT_TARG_API int ompt_target_stop_trace(
 \end{verbatim}
 \end{quote}
 \noindent
-\verb|ompt_target_stop_trace| asks the device to flush any buffers it has in its possession.
+A call to \verb|ompt_target_stop_trace| also implicitly requests that the device flush any buffers that it has in its possession.
 
 \subsection{Processing Trace Records in a Buffer}
 \label{sec:record-data}
 
 There are several routines that need to be used together to process %target 
-event records deposited in a buffer by a device. Function \verb|ompt_target_advance_buffer_cursor|, with the type signature shown below,
+event records deposited in a buffer by a device. Function \verb|ompt_target_advance_buffer_cursor|, with the type signature shown below, advances from one record in the specified buffer to the next.
 
 \begin{quote}
 \begin{verbatim}
@@ -2120,7 +2121,7 @@ OMPT_TARG_API int ompt_target_advance_buffer_cursor(
 ); 
 \end{verbatim}
 \end{quote}
-advances from one record in the specified buffer to the next. It returns 0 if the advance is successful and 1 if \verb|current| indicates a position before the first record of the buffer or a position at or beyond the last record in the buffer.
+It returns 0 if the advance is successful and 1 if \verb|current| indicates a position before the first record of the buffer or a position at or beyond the last record in the buffer.
 
 The function \verb|ompt_target_buffer_get_record_type| enables a tool to inspect the type of a record to determine whether it is both a known type and worth processing further. 
 \begin{quote}
@@ -2186,7 +2187,7 @@ ompt_target_buffer_get_record_native_abstract(
 
 \end{verbatim}
 \end{quote}
-A  \verb|ompt_target_buffer_get_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field is a character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The precise semantics of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. Finally, \verb|target_task_id| indicates the target task with which this record is associated. If there is no associated target task or the associated target task is unknown,  \verb|target_task_id|  will be  0.
+A  \verb|ompt_target_buffer_get_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field is points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The precise semantics of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. Finally, \verb|target_task_id| indicates the target task with which this record is associated. If there is no associated target task or the associated target task is unknown,  \verb|target_task_id|  will be  0.
 
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
@@ -2626,16 +2627,36 @@ typedef enum {
 This section describes miscellaneous enumeration types used by tool callbacks.
 
 \begin{verbatim}
+#define OMPT_API                            /* used to mark OMPT functions obtained from     *
+                                             * lookup function passed to ompt_initialize     */ 
 
-typedef uint64_t ompt_target_activity_id_t;   /* ID of an activity on a device */
+#define OMPT_TARG_API                       /* used to mark OMPT functions obtained from     *
+                                             * lookup function passed to                     *
+                                             * ompt_target_get_device_info                   */
 
-typedef uint32_t ompt_lock_type_t;  /* small integers differentiating the types of locks */
+typedef uint64_t ompt_thread_id_t;          /* uniquely identifies the thread                */ 
 
-typedef uint32_t ompt_lock_hint_t; /* takes the values of typedef uint32_t omp_lock_type_t; */
+typedef uint64_t ompt_task_id_t;            /* uniquely identifies the task instance         */
 
-typedef uint32_t ompt_bool; /* takes the values 0 (false) or 1 (true) */
+typedef uint64_t ompt_parallel_id_t;        /* uniquely identifies the parallel instance     */
 
-typedef void ompt_target_device_t;   /* opaque object representing a target device */
+typedef uint64_t ompt_wait_id_t;            /* identify what a thread is awaiting            */
+
+typedef uint64_t ompt_target_activity_id_t; /* ID of an activity on a device                 */
+
+typedef uint32_t ompt_lock_type_t;          /* small integer encoding the type of a lock     */
+
+typedef uint32_t ompt_lock_hint_t;          /* as described in the OpenMP language standard  */
+
+typedef uint32_t ompt_bool;                 /* takes the values 0 (false) or 1 (true)        */
+
+typedef void ompt_target_device_t;          /* opaque object representing a target device    */
+
+typedef uint64_t ompt_target_time_t;        /* raw time value on a device                    */
+
+typedef void ompt_target_buffer_t;          /* opaque handle for a target buffer             */ 
+
+typedef void ompt_target_buffer_cursor_t;   /* opaque handle for a position in target buffer */ 
 
 typedef enum ompt_thread_type_e {
   ompt_thread_initial  = 1,
@@ -2684,12 +2705,12 @@ typedef enum ompt_task_dependence_flag_e {
 typedef struct ompt_task_dependence_s {
   void *variable_addr;
   uint32_t  dependence_flags;
-} ompt_task_dependence_t
+} ompt_task_dependence_t;
 
 typedef enum ompt_target_map_flag_e {
   // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
   ompt_target_map_flag_to      = 1,
-  ompt_target_map_flag_from    = 2
+  ompt_target_map_flag_from    = 2,
   ompt_target_map_flag_tofrom  = 3, 
   ompt_target_map_flag_alloc   = 4,
   ompt_target_map_flag_release = 5, 
@@ -2699,6 +2720,11 @@ typedef enum ompt_target_map_flag_e {
   // one bit for synchronous/asynchronous
   ompt_target_map_flag_sync = 8,   
 } ompt_target_map_flag_t;
+
+typedef struct ompt_frame_s {
+  void *exit_runtime_frame;    /* next frame is user code     */
+  void *reenter_runtime_frame; /* user frame that reenters the runtime  */
+} ompt_frame_t;
 
 #define ompt_hwid_none (-1)
 #define ompt_dev_task_none (~0ULL)
@@ -2758,7 +2784,7 @@ typedef void (*ompt_workshare_begin_callback_t) ( /* for workshares   */
 							   	    
 typedef void (*ompt_parallel_begin_callback_t) ( /* for new parallel  */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  const ompt_frame_t *parent_task_frame,  /* frame data of parent task    */
+  const ompt_frame_t *parent_frame, /* frame data of parent task    */
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   uint32_t requested_team_size,     /* requested number of threads  */
   const void *codeptr_ofn,          /* pointer to outlined function */
@@ -2781,20 +2807,20 @@ typedef void (*ompt_task_callback_t) ( /* for tasks                 */
   ompt_task_id_t  task_id           /* ID of task                   */
 );
 
-typedef void (*ompt_task_begin_callback_t) ( /* for new tasks         */
+typedef void (*ompt_task_begin_callback_t) ( /* for new tasks       */
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  const ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  const ompt_frame_t *parent_frame, /* frame data for parent task   */
   ompt_task_id_t new_task_id,       /* ID of created task           */
   const void *codeptr_ofn           /* pointer to outlined function */
 );
   
 typedef void (*ompt_target_task_begin_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  const ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
+  const ompt_frame_t *parent_frame, /* frame data for parent task   */
   ompt_task_id_t host_task_id,      /* ID of target task on host    */
   int device_id,                    /* ID of the device             */
   const void *target_task_code,     /* ptr to target code           */
-  ompt_target_task_type_t task_type /* the type of the target task */
+  ompt_target_task_type_t task_type /* the type of the target task  */
 );
 
 typedef void (*ompt_target_task_end_callback_t) ( 	   
@@ -2816,17 +2842,17 @@ typedef void (*ompt_target_data_begin_callback_t) (
 );
 
 typedef struct ompt_target_map_entry_s {
-  void *host_addr,                  /* host  address of the data    */
-  void *device_addr,                /* device address of the data   */ 
-  size_t bytes,                     /* number of bytes mapped       */
-  uint32_t mapping_flags,           /* sync/async, to/from          */
+  void *host_addr;                  /* host  address of the data    */
+  void *device_addr;                /* device address of the data   */ 
+  size_t bytes;                     /* number of bytes mapped       */
+  uint32_t mapping_flags;           /* sync/async, to/from          */
 } ompt_target_map_entry_t;
 
 typedef void (*ompt_target_data_map_begin_callback_t) (
   ompt_task_id_t task_id,           /* ID of encountering task      */
   int device_id,                    /* ID of the device             */
-  const ompt_target_map_entry_t *items, /* the items to be mapped   */
-  uint32_t nitems,                  /* the number of items to be mapped */
+  const ompt_target_map_entry_t *items, /* items to be mapped       */
+  uint32_t nitems,                  /* # of items to be mapped      */
   ompt_target_activity_id_t  map_id /* ID for map event             */
 );
 
@@ -2837,9 +2863,9 @@ typedef void (*ompt_target_data_map_end_callback_t) (
 
 /* task dependences */
 typedef void (*ompt_task_dependences_callback_t) (                                   
-  ompt_task_id_t task_id,            /* ID of task with dependences  */
-  const ompt_task_dependence_t *deps,/* vector of task dependences   */
-  int ndeps                          /* number of dependences        */
+  ompt_task_id_t task_id,            /* ID of task with dependences */
+  const ompt_task_dependence_t *deps,/* vector of task dependences  */
+  int ndeps                          /* number of dependences       */
 );
 
 typedef void (*ompt_task_pair_callback_t) (
@@ -2940,74 +2966,73 @@ OMPT_API int ompt_target_get_device_id(         /* return active target device I
   void
 );
 
-OMPT_TARG_API ompt_target_time_t ompt_target_get_time( /* return current time
-                                                                   stamp of a device     */
-  ompt_target_device_t *device /* target device handle */
+OMPT_TARG_API ompt_target_time_t ompt_target_get_time( /* return current time on device  */
+  ompt_target_device_t *device   /* target device handle                                 */
 );
 
 OMPT_TARG_API double ompt_target_translate_time(
-  ompt_target_device_t *device, /* target device handle */
+  ompt_target_device_t *device,  /* target device handle                                 */
   ompt_target_time_t time
 );
 
 /* target tracing control */
 OMPT_TARG_API int ompt_target_set_trace_ompt(
-  ompt_target_device_t *device, /* target device handle */
-  ompt_bool enable,                   /* enable or disable         */
-  ompt_record_type_t rtype           /* a record type             */
+  ompt_target_device_t *device,  /* target device handle                                 */
+  ompt_bool enable,              /* enable or disable                                    */
+  ompt_record_type_t rtype       /* a record type                                        */
 );
 
 OMPT_TARG_API int ompt_target_set_trace_native(
-  ompt_target_device_t *device, /* target device handle */
-  ompt_bool enable,                 /* enable or disable               */
-  uint32_t  flags                    /* event classes to monitor        */
+  ompt_target_device_t *device,  /* target device handle                                 */
+  ompt_bool enable,              /* enable or disable                                    */
+  uint32_t  flags                /* event classes to monitor                             */
 );
 
 OMPT_TARG_API int ompt_target_start_trace (
-  ompt_target_device_t *device, /* target device handle */
-  ompt_target_buffer_request_callback_t request,
-  ompt_target_buffer_complete_callback_t complete,
+  ompt_target_device_t *device,  /* target device handle                                 */
+  ompt_target_buffer_request_callback_t request,  /* fn pointer to request trace buffer  */
+  ompt_target_buffer_complete_callback_t complete /* fn pointer to return trace buffer   */
 );
 
 OMPT_TARG_API int ompt_target_pause_trace(
-  ompt_target_device_t *device, /* target device handle */
+  ompt_target_device_t *device,  /* target device handle                                 */
   ompt_bool begin_pause
 );
 
 OMPT_TARG_API int ompt_target_stop_trace(
-  ompt_target_device_t *device /* target device handle */
+  ompt_target_device_t *device   /* target device handle                                 */
 );
 
 /* target trace record processing */
 OMPT_TARG_API int ompt_target_advance_buffer_cursor(
-  ompt_target_buffer_t *buffer,
-  ompt_target_buffer_cursor_t current,
-  ompt_target_buffer_cursor_t *next
+  ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  ompt_target_buffer_cursor_t current, /* cursor identifying position in buffer          */
+  ompt_target_buffer_cursor_t *next    /* pointer to new cursor for next position        */
 );
 
 OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
-  ompt_target_buffer_t *buffer,
-  ompt_target_buffer_cursor_t current
+  ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
 );
 
 OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
-  ompt_target_buffer_t *buffer,
-  ompt_target_buffer_cursor_t current
+  ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
 );
 
 OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
-  ompt_target_buffer_t *buffer,
-  ompt_target_buffer_cursor_t current
+  ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
 );
    
 OMPT_TARG_API void *ompt_target_buffer_get_record_native(
-  ompt_target_buffer_t *buffer,
-  ompt_target_buffer_cursor_t current
+  ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
 );
   
-OMPT_TARG_API ompt_trace_native_abstract_t *
+OMPT_TARG_API ompt_record_native_abstract_t *
 ompt_target_buffer_get_record_native_abstract(
-  void *native_record
+  void *native_record                  /* pointer to native trace record                 */
 );
 \end{verbatim}
 
@@ -3035,67 +3060,47 @@ typedef struct ompt_record_native_abstract_s {
   const char *type;
   ompt_target_time_t start_time;
   ompt_target_time_t end_time;
-  ompt_target_activity_t dev_task_id;
+  ompt_target_activity_id_t dev_task_id;
   uint64_t hwid;
 } ompt_record_native_abstract_t;
 
 /* correlation */
 typedef struct ompt_record_correlation_s {
   ompt_task_id_t host_task_id;         
-  ompt_target_activity_t dev_task_id;
+  ompt_target_activity_id_t dev_task_id;
 } ompt_record_correlation_t;
-
-/* OMPT record */
-typedef struct ompt_record_ompt_s {
-  ompt_event_t type;                    /* event type                        */
-  ompt_target_time_t time;   /* time, when the record occurred    */
-  ompt_thread_id_t thread_id;           /* thread identifier for this record */
-  ompt_target_activity_id_t dev_task_id;     /* link back to its host context     */
-  union
-  {
-    ompt_record_thread_t;                        /* for thread          */
-    ompt_record_thread_type_t;                   /* for thread type     */
-    ompt_record_wait_t;                          /* for wait            */
-    ompt_record_parallel_t parallel;             /* for inside parallel */
-    ompt_record_workshare_begin_t new_workshare; /* for workshares      */
-    ompt_record_parallel_begin_t new_parallel;   /* for new parallel    */
-    ompt_record_task_t task;                     /* for tasks           */
-    ompt_record_task_pair_t task_switch;         /* for task switch     */
-    ompt_record_task_begin_t new_task;           /* for new tasks       */
-  } record;
-} ompt_record_ompt_t;
 
 /* record types */
 typedef struct ompt_record_thread_s {
-  ompt_thread_id_t thread_id       /* ID of thread                  */
+  ompt_thread_id_t thread_id;      /* ID of thread                 */
 } ompt_record_thread_t;
 
 typedef struct ompt_record_thread_type_s {
-  ompt_thread_type_t thread_type,  /* type of thread               */
-  ompt_thread_id_t thread_id       /* ID of thread                 */
+  ompt_thread_type_t thread_type;  /* type of thread               */
+  ompt_thread_id_t thread_id;      /* ID of thread                 */
 } ompt_record_thread_type_t;
 
-typedef struct {
-  ompt_wait_id_t wait_id           /* wait ID                      */
-} ompt_record_wait_callback_t;
+typedef struct ompt_record_wait_id_s {
+  ompt_wait_id_t wait_id;          /* wait ID                      */
+} ompt_record_wait_id_t;
 
 typedef struct ompt_record_parallel_s {
-  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
-  ompt_task_id_t task_id;          /* ID of task */
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region        */
+  ompt_task_id_t task_id;          /* ID of task                   */
 } ompt_record_parallel_t;
 
 typedef struct ompt_record_workshare_begin_s {
-  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
-  ompt_task_id_t task_id;          /* ID of task */
-  void *codeptr;        /* return address for the workshare call */
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region         */
+  ompt_task_id_t task_id;          /* ID of task                    */
+  void *codeptr_ra;                /* runtime call return address   */
 } ompt_record_workshare_begin_t;
 
 typedef struct ompt_record_parallel_begin_s {
-  ompt_task_id_t parent_task_id;   /* ID of parent task */
-  ompt_frame_t *parent_task_frame; /* frame data of parent task */
-  ompt_parallel_id_t parallel_id;  /* ID of parallel region */
-  uint32_t requested_team_size;    /* requested number of threads */
-  void *codeptr_ofn;         /* pointer to outlined function */
+  ompt_task_id_t parent_task_id;   /* ID of parent task             */
+  ompt_frame_t *parent_frame;      /* frame data of parent task     */
+  ompt_parallel_id_t parallel_id;  /* ID of parallel region         */
+  uint32_t requested_team_size;    /* requested number of threads   */
+  void *codeptr_ofn;               /* pointer to outlined function  */
 } ompt_record_parallel_begin_t;
 
 typedef struct ompt_record_task_s {
@@ -3108,56 +3113,71 @@ typedef struct ompt_record_task_pair_s {
 } ompt_record_task_pair_t;
 
 typedef struct ompt_record_task_begin_s {
-  ompt_task_id_t parent_task_id;   /* ID of parent task */
-  ompt_frame_t *parent_task_frame; /* frame data of parent task */
-  ompt_task_id_t new_task_id;      /* ID of created task */
-  void *codeptr_ofn;         /* pointer to outlined function */
+  ompt_task_id_t parent_task_id;   /* ID of parent task             */
+  ompt_frame_t *parent_task_frame; /* frame data of parent task     */
+  ompt_task_id_t new_task_id;      /* ID of created task            */
+  void *codeptr_ofn;               /* pointer to outlined function  */
 } ompt_record_task_begin_t;
 
 typedef struct ompt_record_target_task_begin_s {
-  ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  ompt_frame_t *parent_task_frame,  /* frame data for parent task   */
-  ompt_task_id_t target_task_id,    /* ID of target task            */
-  int device_id,                    /* ID of the device             */
-  void *target_task_code        /* pointer to target task code */
+  ompt_task_id_t parent_task_id;    /* ID of parent task            */
+  ompt_frame_t *parent_task_frame;  /* frame data for parent task   */
+  ompt_task_id_t target_task_id;    /* ID of target task            */
+  int device_id;                    /* ID of the device             */
+  void *target_task_code;           /* pointer to target task code  */
 } ompt_record_target_task_begin_t;
 
 typedef struct ompt_record_target_data_begin_s {
-  ompt_task_id_t task_id,           /* ID of encountering task      */
-  int device_id,                    /* ID of the device             */
-  void *codeptr_ra                  /* return address of api call   */
+  ompt_task_id_t task_id;           /* ID of encountering task      */
+  int device_id;                    /* ID of the device             */
+  void *codeptr_ra;                 /* return address of api call   */
 } ompt_record_target_data_begin_t;
  
 typedef struct ompt_record_data_map_begin_s {
-  ompt_task_id_t task_id,           /* ID of encountering task      */
-  int device_id,                    /* ID of the device             */
-  void *host_addr,                  /* host  address of the data    */
-  void *device_addr,                /* device address of the data   */ 
-  size_t bytes,                     /* number of bytes mapped       */
-  uint32_t mapping_flags,           /* sync/async, to/from          */
-  void *target_map_code             /* ptr to target map code       */
+  ompt_task_id_t task_id;           /* ID of encountering task      */
+  int device_id;                    /* ID of the device             */
+  void *host_addr;                  /* host  address of the data    */
+  void *device_addr;                /* device address of the data   */ 
+  size_t bytes;                     /* number of bytes mapped       */
+  uint32_t mapping_flags;           /* sync/async, to/from          */
+  void *target_map_code;            /* ptr to target map code       */
 } ompt_record_data_map_begin_t;
 
 typedef struct ompt_record_data_map_done_s {
-  ompt_task_id_t task_id,           /* ID of current task           */
-  int device_id,                    /* ID of the device             */
-  void *host_addr,                  /* host  address of the data    */
-  void *device_addr,                /* device address of the data   */ 
-  size_t bytes,                     /* number of bytes mapped       */
-  uint32_t mapping_flags            /* sync/async, to/from          */
+  ompt_task_id_t task_id;           /* ID of current task           */
+  int device_id;                    /* ID of the device             */
+  void *host_addr;                  /* host  address of the data    */
+  void *device_addr;                /* device address of the data   */ 
+  size_t bytes;                     /* number of bytes mapped       */
+  uint32_t mapping_flags;           /* sync/async, to/from          */
 } ompt_record_data_map_done_t;
 
 typedef struct ompt_record_task_dependences_s {
-  ompt_task_id_t task_id,           /* ID of task with dependences  */
-  ompt_task_dependence_t *deps,     /* vector of task dependences   */
-  int ndeps                         /* number of dependences        */
+  ompt_task_id_t task_id;           /* ID of task with dependences  */
+  ompt_task_dependence_t *deps;     /* vector of task dependences   */
+  int ndeps;                        /* number of dependences        */
 } ompt_record_task_dependences_t;
+
+/* OMPT record */
+typedef struct ompt_record_ompt_s {
+  ompt_event_t type;                /* event type                       */
+  ompt_target_time_t time;          /* time record created              */
+  ompt_thread_id_t thread_id;       /* thread ID for this record        */
+  ompt_target_activity_id_t dev_task_id;  /* link to host context       */
+  union
+  {
+    ompt_record_thread_t thread;                 /* for thread          */
+    ompt_record_thread_type_t type;              /* for thread type     */
+    ompt_record_wait_id_t waitid;                /* for wait            */
+    ompt_record_parallel_t parallel;             /* for inside parallel */
+    ompt_record_workshare_begin_t new_workshare; /* for workshares      */
+    ompt_record_parallel_begin_t new_parallel;   /* for new parallel    */
+    ompt_record_task_t task;                     /* for tasks           */
+    ompt_record_task_pair_t task_switch;         /* for task switch     */
+    ompt_record_task_begin_t new_task;           /* for new tasks       */
+  } record;
+} ompt_record_ompt_t;
 \end{verbatim}
-% typedef uint64_t (*ompt_get_host_time_t)( /* retrieve host time stamps */
-%   void 
-% );
-%   /* pointer to host time stamp function */
-%   ompt_get_host_time_t host_time_function,
 
 \clearpage
 \subsection{Registration and Initialization} 
