@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised November 12, 2015}
+\date{Revised November 16, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -2656,7 +2656,7 @@ typedef uint64_t ompt_target_time_t;        /* raw time value on a device       
 
 typedef void ompt_target_buffer_t;          /* opaque handle for a target buffer             */ 
 
-typedef void ompt_target_buffer_cursor_t;   /* opaque handle for a position in target buffer */ 
+typedef uint64_t ompt_target_buffer_cursor_t; /* opaque handle for position in target buffer */
 
 typedef enum ompt_thread_type_e {
   ompt_thread_initial  = 1,
@@ -3056,7 +3056,7 @@ typedef enum {
 
 /* native record abstract */
 typedef struct ompt_record_native_abstract_s {
-  ompt_record_native_class_t rclass,
+  ompt_record_native_class_t rclass;
   const char *type;
   ompt_target_time_t start_time;
   ompt_target_time_t end_time;
@@ -3194,9 +3194,9 @@ Function \verb|ompt_tool| returns a pointer to a tool initializer, whose type si
 
 \begin{verbatim}
 typedef void (*ompt_initialize_fn_t) (
+  ompt_function_lookup_t lookup,
   const char *runtime_version, 
-  unsigned int ompt_version,
-  ompt_function_lookup_t lookup 
+  unsigned int ompt_version
 );
 \end{verbatim}
 
