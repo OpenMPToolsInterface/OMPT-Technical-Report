@@ -1357,7 +1357,7 @@ typedef uint64_t ompt_parallel_id_t;
 
 \noindent
   The \verb|ompt_parallel_id_t| for a parallel region is unique
-  across all parallel regions.  A parallel region is assigned an ID
+  across all parallel regions on a device.  A parallel region is assigned an ID
   when the region is created. A parallel region's ID is
   passed to callbacks associated with begin/end of the
   parallel region, as well as callbacks that occur in the context of the parallel region.
@@ -1370,7 +1370,7 @@ typedef uint64_t ompt_parallel_id_t;
  
   \subsection{Task Region Identifier}
   Each OpenMP task region has an associated
-  \verb|ompt_task_id_t| that uniquely identifies the task region. 
+  \verb|ompt_task_id_t| that uniquely identifies the task region on a device. 
   This holds for implicit tasks, including the initial task, as well as for explicit tasks.
 
 \begin{quote}
@@ -2261,14 +2261,14 @@ typedef void (*ompt_initialize_fn_t) (
 );
 \end{verbatim}
 \end{quote}
-The first argument to  \verb|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime system implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime system implementation. Knowing exactly what version of an OpenMP runtime system is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
+The second argument to  \verb|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime system implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime system implementation. Knowing exactly what version of an OpenMP runtime system is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
 
-The second argument \verb|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
+The third argument \verb|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
 The version of OMPT described by this document is known as version 2.
 
 The two principal duties of a tool initializer are looking up pointers to all OMPT API functions that the tool uses and to registering tool callbacks.  These two operations are described below.
 
-\paragraph{Looking up functions in the OMPT API.} The third argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to all OMPT interface functions.
+\paragraph{Looking up functions in the OMPT API.} The first argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to all OMPT interface functions.
 The type signature for  \verb|lookup| is:
 
 \begin{quote}
@@ -2525,15 +2525,13 @@ typedef enum {
   ompt_event_task_end                 = 4,  /* task destroy               */
 
   ompt_event_target_task_begin        = 62, /* target task launch         */
-  ompt_event_target_task_end_sync     = 63, /* target task end (sync)     */
+  ompt_event_target_task_end          = 63, /* target task end (sync)     */
 
   ompt_event_control                  = 7,  /* support control calls      */
 
   ompt_event_runtime_shutdown         = 8,  /* runtime shutdown           */
 
   /*--- Optional Events (blame shifting) ---*/  	
-  ompt_event_target_task_end_async    = 64, /* target task end (sync)     */
-	    
   ompt_event_idle_begin	              = 9,  /* begin idle state           */ 
   ompt_event_idle_end                 = 10, /* end idle state             */ 
 
