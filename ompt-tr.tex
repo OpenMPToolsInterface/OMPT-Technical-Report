@@ -80,6 +80,8 @@ Finally, OMPT defines callbacks suitable for instrumentation-based monitoring of
 
 With the exception of one routine for tool control, all functions in the OMPT API are intended for use only by tools rather than by applications. All OMPT API functions  have a C binding. A Fortran binding is  provided only for the single application-facing tool control function described in Section~\ref{sec:app-facing}.
 
+The OMPT API may in some cases enable a tool to infer details and observe performance implications about the implementation chosen by an OpenMP compiler and runtime. An OpenMP implementation may differ from the abstract execution model described by the OpenMP standard. The ability of tools using OMPT  to observe such differences does not affect the language implementation's ability to optimize using the ``as if'' rule described in the OpenMP standard.
+
 \subsubsection{Design Objectives}
 OMPT tries to satisfy several design objectives for a performance tool interface for OpenMP. These objectives are listed in decreasing order of importance.
 \begin{itemize}
