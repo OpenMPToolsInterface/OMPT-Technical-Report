@@ -25,7 +25,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised December 10, 2015}
+\date{Revised December 18, 2015}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -1982,14 +1982,14 @@ Some functions in the target device tracing control API described in this sectio
 
 \subsection{Enabling and Disabling Tracing for OMPT Record Types}
 \label{sec:trace-event}
-A tool uses function \verb|ompt_target_set_trace_ompt| to enable or disable the recording of one or more types of OMPT trace record types:
+A tool uses function \verb|ompt_target_set_trace_ompt| to enable or disable the recording of trace records for one or more types of OMPT events:
 
 \begin{quote}
 \begin{verbatim}
 OMPT_TARG_API int ompt_target_set_trace_ompt(
   ompt_target_device_t *device,      /* target device handle      */
   ompt_bool enable,                  /* enable or disable         */
-  ompt_record_type_t rtype           /* a record type             */
+  ompt_event_t etype                 /* an event type             */
 );
 \end{verbatim}
 \end{quote}
