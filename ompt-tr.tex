@@ -18,14 +18,13 @@ Martin Schulz\thanks{Lawrence Livermore National Laboratory},
 Nawal Copty\thanks{Oracle}, 
 Jim Cownie\thanks{Intel},
 Tim Cramer\thanks{RWTH Aachen University}, 
-% John DelSignore\thanks{Rogue Wave}, 
 Robert Dietrich\thanks{TU Dresden, ZIH},
 Xu Liu\hbox to 0in{$^\dagger$\hss},
 Eugene Loh\hbox to 0in{$^\S$\hss}, 
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised December 18, 2015}
+\date{Revised January 24, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -55,28 +54,17 @@ Today, it is difficult to produce high quality tools that support
 performance analysis of OpenMP programs without tightly integrating them with a specific OpenMP runtime implementation. To address this problem, this document defines OMPT---an application programming interface (API) for first-party performance tools.\footnote{A {\em first-party} tool runs within the address space of an application process. This differs from a {\em third-party} tool, e.g., a debugger, which runs as a separate process.}  
 Extending the OpenMP standard with this API  will make it possible to construct powerful tools that will support any standard-compliant OpenMP implementation.
 
-
-\begin{comment}
-In appendices, we
-define OMPD---an optional shared-library plugin that will enable debuggers  to inspect and control executions of OpenMP programs. We describe OMPD in this document because it provides third-party variants  of OMPT features  to enable assembly of user-level views of thread call stacks by debuggers.
-\end{comment}
-
 \subsection{OMPT}
 
 The design of OMPT is based on experience with two prior efforts to define a standard OpenMP tools API: the POMP API~\cite{Mohr:EWOMP02} and the Sun/Oracle Collector API~\cite{SunCollector,Jost:2005:AND:1892830.1892858}. 
 The POMP API provides support for instrumentation-based measurement. A drawback of this approach  is that its overhead can be significant because an operation, e.g., an iteration of an OpenMP worksharing loop, may take less time than tool callbacks monitoring its execution. 
-%Doesn't have to be:
-%Second, traces grow quickly and can be unwieldy for long executions. 
 In contrast, 
 the Sun/Oracle Collector API was  designed primarily to support performance measurement 
-% and attribution of performance information 
 using asynchronous sampling. This  design enables the construction of tools that attribute costs without the overhead and intrusion of pervasive instrumentation. With the Collector API, tools
  can use low-overhead asynchronous  sampling of application call stacks to record compact call path profiles. However, the Collector API doesn't provide enough instrumentation hooks to provide full tool support for statically-linked executables.
-% instrumentation hooks to enable construction of trace analyzers or verification tools.
 OMPT builds upon ideas from both the POMP and  Collector APIs. The core of OMPT is a minimal set of features to support tools that employ asynchronous sampling to measure application performance. In addition, OMPT defines  interfaces to support  {\em blame shifting}~\cite{Tallent:PPoPP09,Tallent:PPoPP10}---a technique that shifts attribution of costs from symptoms to causes.
 Finally, OMPT defines callbacks suitable for instrumentation-based monitoring of runtime events. 
  OMPT can be implemented entirely by a compiler, entirely by an OpenMP runtime system, or with a hybrid strategy that employs a mixture of compiler and runtime support.
-%equires no compiler support, and is implemented entirely within an OpenMP runtime system. 
 
 With the exception of one routine for tool control, all functions in the OMPT API are intended for use only by tools rather than by applications. All OMPT API functions  have a C binding. A Fortran binding is  provided only for the single application-facing tool control function described in Section~\ref{sec:app-facing}.
 
@@ -99,7 +87,6 @@ OMPT tries to satisfy several design objectives for a performance tool interface
 \end{itemize}
 
 To support the OMPT interface for tools, an OpenMP runtime system must maintain information about the state of each OpenMP thread and provide a set of API calls that tools can use to interrogate the OpenMP runtime. Maintaining information about the state of each thread in the runtime system is not free and thus an OpenMP runtime system need not maintain state information unless a tool has registered its interest in this information.
-% , or an environment variable has directed the tool to track runtime state.
 Without any explicit request to enable tool support, an OpenMP runtime need not maintain any state for the benefit of tools.
 
 \subsubsection{Minimally Compliant Implementation}
@@ -124,19 +111,11 @@ Section~\ref{sec:events} describes the OMPT callbacks to notify a tool of variou
 Section~\ref{sec:data} describes the data structures used by the OMPT interface.
 Section~\ref{sec:inquiry} describes the runtime system inquiry operations supported by OMPT for the benefit of tools.
 Section~\ref{sec:enabling} describes the OMPT API operations for tool initialization.
-% Section~\ref{sec:globals} describes a global variable provided by the OpenMP runtime to support the OMPD debugger plug in library, which is being developed separately.
 Section~\ref{sec:app-facing} describes the tool control interface available to applications.
 Section~\ref{sec:notes} concludes with a few notes about potential future enhancements.
 Appendix~\ref{appendix:ompt-types} provides a definition of the complete OMPT interface in C.
 Appendix~\ref{app:frame} illustrates the information that OMPT maintains about call stacks and the use of OMPT API routines to inspect it; this support enables tools to associate code executed in OpenMP parallel regions with  application-level calling contexts. 
 Appendix~\ref{app:registration} outlines some considerations that impact the design of the interface for tool registration.
-
-
-\begin{comment}
-Next, a pair of appendices describe OMPD---a shared library plugin for debuggers that supports third-party inspection and control of a target process. OMPD enables a debugger to leverage functionality provided by OMPT to enable it to provide a user-level view of call stacks for threads.
-Appendix~\ref{appendix:ompd} describes the OMPD interface.  
-Appendix~\ref{appendix:ompd-types} provides a definition of the complete OMPD interface in C.
-\end{comment}
 
 \section{Runtime States} 
 \label{sec:states} 
@@ -160,7 +139,6 @@ thread is waiting. The semantics of the values used for a \verb|wait_id| are imp
 A thread's \verb|wait_id| is undefined if the thread
 is not in a wait state.
 
-% States are classified as {\em mandatory} or {\em optional}.
 Some states must be supported by any compliant implementation, e.g., those indicating that a thread is executing parallel or serial work. In other cases, alternatives exist. For instance, one may use a single state to represent all waiting at barriers or use a pair of states to differentiate between waiting at implicit and explicit barriers.
 For some states, OpenMP runtimes have some flexibility about whether to report the state early or late.
 For example, consider when a thread acquires a lock. One
@@ -171,7 +149,6 @@ lock. Another compliant runtime may transition a thread's state to
 block to wait for an unavailable lock. A third compliant runtime
 may transition a thread's state to \verb|ompt_state_wait_lock| even later, e.g., only
 after the thread waits for a significant amount of time. 
-% While flexible states are not mandatory as ``significant amount of time" is  not precisely defined, implementing them is recommended.
 
 State values 0 to 127 are reserved for current OMPT states and future extensions.  
 
@@ -405,25 +382,10 @@ discretion of a runtime system implementer.
 
 \begin{description}
 
-\begin{comment}
-\item \verb|ompt_event_initial_thread_begin|
-
-% def of initial thread: A thread that executes an implicit parallel region.
-% def of implicit parallel region: An inactive parallel region that generates an initial task region. Implicit parallel regions surround the whole OpenMP program, all target regions, and all teams regions.
-
-The OpenMP runtime invokes this callback when an initial thread triggers initialization of the OpenMP runtime for itself. 
-The runtime issues the callback after the runtime is fully initialized, but before the thread executes any
-OpenMP tasks. The callback executes in the context of the initial thread and must precede any other callbacks for that thread.
-This callback has type signature \verb|ompt_thread_callback_t|. 
-\end{comment}
-
-% def of openmp thread: A thread that is managed by the OpenMP runtime system.
-
 \item \verb|ompt_event_thread_begin|
 
 The OpenMP runtime invokes this callback in the context of an initial thread just after it initializes the OpenMP runtime for itself, or in the context of a new thread created by the OpenMP runtime system just after the thread initializes itself. In either case, this callback must be the first callback for a thread
 and must occur before the thread executes any OpenMP tasks. The type of the thread (\verb|ompt_thread_initial|, \verb|ompt_thread_worker|, or \verb|ompt_thread_other|) is passed as an argument to the callback. This callback has type signature \verb|ompt_thread_type_callback_t|. 
-
 
 \item \verb|ompt_event_thread_end|
 
@@ -468,24 +430,6 @@ a nested region encountered when nested parallelism is disabled or at a nesting 
 maximum number of nested active parallel regions supported on a device, 
 it is implementation dependent whether or not an OpenMP runtime system will perform
  \verb|ompt_event_parallel_begin| and \verb|ompt_event_parallel_end| callbacks.
-
-
-% \descheader{Target Regions}
-% 
-% \begin{description}
-% 
-% \item \verb|ompt_event_target_begin|
-% 
-%   The OpenMP runtime invokes this callback in a task that encounters a target construct before the target region begins execution.
-%   The callback executes in the context of the task that encountered the target construct.
-%   This callback has type signature \verb|ompt_new_target_callback_t|.
-% 
-% \item \verb|ompt_event_target_end|
-% 
-%   The OpenMP runtime invokes this callback  in a task that encountered a target construct after the target device is presented the target function but before the encountering task leaves the target region. If the target region had a {\tt nowait} clause, execution of the target region may not be known to be complete.
-% An argument to the callback indicates whether execution of the target region is known to be complete or not. This callback has type signature \verb|ompt_end_target_callback_t|.
-%   
-% \end{description}
 
 \descheader{Tasks}
 
@@ -1046,22 +990,6 @@ before the task
   The callback executes in the context of the task that encountered the target data construct.
   This callback has type signature \verb|ompt_task_callback_t|.
 
-\begin{comment}
-\item \verb|ompt_event_target_update_begin|
-
-  The OpenMP runtime invokes this callback after a task encounters a target update construct but before the corresponding
-  list items are made consistent with the device data environment.
-  The callback executes in the context of the task that encountered the target data construct.
-  This callback has type signature \verb|ompt_target_task_begin_callback_t|.
-
-\item \verb|ompt_event_target_update_end|
-
-  The OpenMP runtime invokes this callback when the task that encountered the target update construct is 
-  done with the target update region. Since updates  may execute asynchronously on a device, the callback may occur before the update  is complete.
-  The callback executes in the context of the task that encountered the target update construct.
-  This callback has type signature \verb|ompt_task_callback_t|. The task id passed to the callback belongs to the target task.
-\end{comment}
-
 \item \verb|ompt_event_target_data_map_begin|
 
   The OpenMP runtime invokes this callback just before a variable is mapped to or from the device data environment.
@@ -1073,37 +1001,8 @@ before the task
   The OpenMP runtime invokes this callback immediately after a variable is mapped to or from the device data environment. Since the map operation may execute asynchronously on the device, the map end callback on the host may occur before the map operation is complete.
   The callback executes in the context of the the encountering task, which executes the region.
   This callback has type signature \verb|ompt_target_data_map_end_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
-  
-  \begin{comment}
-  \item \verb|ompt_event_target_data_map_done_async|
-
-  The OpenMP runtime invokes this callback after an asynchronous variable map operation finishes execution on a device.
-   Since the map operation may execute asynchronously on the device, the map done callback may occur after the map end.
-  The callback executes in the context of an arbitrary task, which may not be the one that initiated the map operation.
-  This callback has type signature \verb|ompt_target_data_map_end_callback_t|. The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
-  
-\item \verb|ompt_event_target_data_map_done_sync|
-
-  The OpenMP runtime invokes this callback after a synchronous variable map operation finishes execution on a device. This callback has type signature \verb|ompt_target_data_map_end_callback_t|.  The \verb|map_id| passed to the callback is the same as the one provided to the task that initiated the mapping.
-\end{comment}
-
-% \item \verb|ompt_event_target_invoke_begin|
-% 
-%   The OpenMP runtime invokes this callback after all variables of the enclosing target region 
-%   are mapped but before the target function is presented to a device.
-%   The callback executes in the context of the task that encountered the target construct.
-%   This callback has type signature \verb|ompt_new_target_callback_t|.
-% 
-% \item \verb|ompt_event_target_invoke_end|
-% 
-%   \marginpar{\color{red}is this\\ necessary?}
-%   The OpenMP runtime invokes this callback immediately after a target function was presented to a device.
-%   This callback has type signature \verb|ompt_target_callback_t|.
-
 
 \end{description}
-
-%*** Jim: Why do we treat the barrier at the end of single differently from that at the end of master?
 
 \descheader{Barriers}
 
@@ -1395,9 +1294,6 @@ typedef uint64_t ompt_task_id_t;
   
   An initial task will also have its own unique task region ID.
   
-% \paragraph{Note to implementers:} OpenMP defines the serial region as an implicit initial task.
-
- 
 \subsection{Wait Identifier}
 
   Each thread instance maintains an \verb|ompt_wait_id_t|. When a thread is waiting for something, the thread's wait ID identifies what the thread is awaiting. 
@@ -1489,24 +1385,10 @@ exit = defined 	& non-initial task in (or soon to be in) user code							& non-i
 Table~\ref{tab:frame} describes the meaning of this structure with various values.
 In the presence of nested parallelism, a tool may observe a sequence of \verb|ompt_frame_t| records for a thread. Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| records with nested parallelism.
 
-\begin{comment}
-% omit this because it doesn't consider degenerate regions or target task regions.
- \sloppy
-  The live range of the \verb|ompt_frame_t| for a given task starts at 
-  the \verb|ompt_event_task_begin|, \verb|ompt_event_implicit_task_begin|, or \verb|ompt_event_initial_task_begin| event and 
-  lasts until the \verb|ompt_event_task_end|, \verb|ompt_event_implicit_task_end|, or \verb|ompt_event_initial_task_end|  event, inclusively.
-\end{comment}
-
 \paragraph{Advice to tool implementers:} A monitoring tool using
       asynchronous sampling can observe values of 
       \verb|exit_runtime_frame| and \verb|reenter_runtime_frame| at inconvenient times. 
       Tools must be prepared to observe and handle frame exit and reenter values that have not yet been set or reset as the program enters or returns to the runtime. 
-      % In particular, the \verb|ompt_frame_t| at level 0 may contain only NULL pointers. 
-
-% The pairing between reenter and exit events is worth noting. A exit event in an \verb|ompt_frame_t| at level $k$ always pairs with the reenter event in the frame at level $k+1$. 
-
- 
- 
 
 \section{Inquiry Functions for Tools}
 \label{sec:inquiry}
@@ -1680,26 +1562,6 @@ The function returns the state of the current thread and updates
 One may pass NULL for \verb|wait_id| if the tool does not want a wait ID returned.
  {\em This function is async signal safe.}
  
- \begin{comment}
-Function \verb|ompt_get_idle_frame| is the inquiry function to determine 
-the lowest frame in the current thread's call stack 
-where the thread would await new work.
-
-
-\begin{quote}
-\begin{verbatim}
-OMPT_API void *ompt_get_idle_frame(void);
-\end{verbatim}
-\end{quote}
- 
- \noindent
-We specify the lowest frame where a thread would await work since the thread might call a routine to check for work or a routine that blocks on a condition variable from this frame.
-The function  \verb|ompt_get_idle_frame|  returns the value NULL when the current thread has no 
-idle frame in its call stack.
-Note that this function always returns NULL for an OpenMP initial thread.
-{\em This function is async signal safe.}
-\end{comment}
-
 \subsection{Parallel Region Inquiry} 
 \label{sec:parallel-inquiry} 
 Function \verb|ompt_get_parallel_id| returns  
@@ -1719,7 +1581,6 @@ Outside a parallel region, \verb|ompt_get_parallel_id| should return 0. If a thr
 In all other cases, 
 the thread should return the ID of the enclosing parallel region, even if the thread is waiting at a barrier.
 
-%\noindent 
 The function takes an ancestor level as an argument. By specifying different values for
 ancestor level, one can access information about all enclosing parallel regions. The meaning of different values for the \verb|ancestor_level| argument to \verb|ompt_get_parallel_id| is given in Table~\ref{tab:ancestor}.
 
@@ -1755,8 +1616,6 @@ OMPT_API int ompt_get_parallel_team_size(
 \noindent
  This function returns the value -1 when requesting higher levels of
  ancestry than exist.  {\em This function is async signal safe.}
-
-
  
 \subsection{Task Region Inquiry}
 \label{sec:task-region}
@@ -1784,12 +1643,6 @@ Function \verb|ompt_get_task_info| returns an a boolean, which indicates whether
 If presented with a non-NULL \verb|type| pointer, \verb|ompt_get_task_info| will return information about the type of the task at the specified ancestor level. A task may be of  serial, implicit, explicit,  target, or degenerate type. If presented with a non-NULL \verb|task_id| pointer, \verb|ompt_get_task_info| will return the ID of the task at the specified ancestor level. If the task at the specified ancestor level is a degenerate task, the value for \verb|task_id| will be 0. If presented with a non-NULL \verb|task_frame| pointer, \verb|ompt_get_task_info| will return the \verb|ompt_frame_t| object for the task at the specified ancestor level. Finally, if presented with a non-NULL \verb|par_id| pointer, \verb|ompt_get_task_info| will return the identity of the parallel region to which the task at the specified ancestor level belongs. A degenerate task will be associated with the enclosing parallel region. 
 If the task is outside any parallel region, the value returned in \verb|par_id| will be 0.
 
-\begin{comment}
-\noindent
-% Each instance of an implicit or explicit task in an execution is assigned a unique identifier.
- If a tool  requests a task ID at a depth deeper than the  dynamic nesting of implicit and explicit tasks in the current execution context,  {\tt ompt\_get\_task\_id} will return~0---the value reserved to indicate an invalid task.
-\end{comment}
-
 \begin{table}
 \centering
 \begin{tabular}{|l|l|}
@@ -1804,79 +1657,9 @@ depth & meaning\\\hline
 \label{tab:task-ancestor}
 \end{table}
 
-\begin{comment}
-Function \verb|ompt_get_task_frame| returns an \verb|ompt_frame_t| record that identifies a contiguous interval of frames on the call stack. This interval of stack frames represents activity by the application rather than the OpenMP runtime system. 
-\end{comment}
-
 Using return values from  \verb|ompt_frame_t| objects returned by calls to  \verb|ompt_get_task_info|, a tool that collects the call stack of a thread can analyze  frames in the call stack and identify ones that exist on behalf of the runtime system.\footnote{A frame on the call stack is said to exist on behalf of an OpenMP runtime system if it is a frame for a runtime system routine, or if it belongs to a library function called by a runtime system routine, directly or indirectly.} 
 This capability enables a tool to map from an implementation-level view back to the source-level view familiar to application developers. 
 Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| objects with multiple threads and nested parallelism.
-% When reaching the first frame of a stack, for example, when walking back the stack of thread 2, a tool can resume the walking in the parent's stack starting above the \verb|reenter_runtime_frame| field associated with its parent's task.
-
-\begin{comment}
-\paragraph{Advice to tool implementers:} A monitoring tool using
-      asynchronous sampling can observe values of 
-      \verb|exit_runtime_frame| and \verb|reenter_runtime_frame| before they are
-      set to non-NULL values while in the runtime. Tools must be   
-      prepared to handle samples that occur in this brief window.
-\end{comment}
-
-
- 
- \begin{comment}
- \subsection{Tool Support Version Inquiry}
-
-The  function \verb|ompt_get_ompt_version| returns the version of the OMPT interface supported by the runtime. 
-
-\begin{quote}
-\begin{verbatim}
-OMPT_API int ompt_get_ompt_version(void);
-\end{verbatim}
-\end{quote}
-
-\noindent
-The version of OMPT described by this document is known as version 1.
-\end{comment}
-
-\begin{comment}
-\subsection{Runtime Version Inquiry}
-
-The runtime function \verb|ompt_get_runtime_version| may be called by a tool to obtain a string that uniquely defines an OpenMP runtime implementation version. A call to the following API by a tool
-
-%\begin{quote}
-%\begin{verbatim}
-%C:
-%   int ompt_get_runtime_version(char *buffer, int length);
-%   
-%Fortran:
-%   subroutine ompt_get_runtime_version(buffer, length, overflow)
-%   character*(*) buffer
-%   integer*4, length, overflow
-%\end{verbatim}
-%\end{quote}
-
-
-\begin{quote}
-\begin{verbatim}
-int ompt_get_runtime_version(char *buffer, int length);
-\end{verbatim}
-\end{quote}
-
-\noindent fills  {\tt buffer} with a version-specific string of at most {\tt length} characters. 
-The return value will be the number of characters in the runtime version string that do not fit into the supplied buffer.  If a length of 0 is passed, the buffer argument will be ignored and the desired buffer length will be returned.
-
-A return value of 0 indicates success:  the whole runtime version string was returned without truncation.
-The recommended format for the version string is
-
- \begin{quote}
-\begin{verbatim}
-<vendor>-<major version number>.<minor version number>[-<optional feature]*
-\end{verbatim}
-\end{quote}
-
-\noindent Namely, a vendor name, major and minor version numbers,  and, optionally, a list of zero or more features, separated by dashes. As an example, IBM's OpenMP runtime might return the following version string `` IBM-1.1-blame=1-trace=0'', indicating that IBM's OpenMP runtime supports  OMPT blame shifting, but not tracing.
-\end{comment}
- 
 
 \subsection{Target Device Inquiry}
 \label{sec:target-region}
@@ -1912,7 +1695,6 @@ OMPT_API int ompt_target_get_device_id(void);
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, then it will return a value of -1. {\it This function is async signal safe.}
 
-% \marginpar{Do we want to reveal information about the device clock, or should we simply have an OpenMP runtime supported API for translating a device time into host time?}
 Host and target devices are typically distinct and run independently. If a
 host and target device are different hardware components, they may 
 use different clock generators. For this reason,  there may be no common time base for ordering host-side and device-side events.
@@ -1924,7 +1706,6 @@ OMPT_TARG_API ompt_target_time_t ompt_target_get_time(
 );
 \end{verbatim}
 \end{quote}
-% The host and target device typically run different operating system instances and distinct instances of an OpenMP runtime. 
 This inquiry function can be used
 to acquire information that can be used to align time stamps from the target device with time
 stamps from the host or other devices.
@@ -1940,27 +1721,6 @@ OMPT_TARG_API double ompt_target_translate_time(
 \end{quote}
 \noindent
 {\em Advice to tool implementers:} The accuracy of time translations will only get worse the longer they are delayed due to changes in clock speed (e.g., due to thermal issues). Prompt translation of device times to host times is recommended.
-
-\begin{comment}
-The function \verb|ompt_target_map| maps the specified number of bytes
-between host and target device according to the map type.
-The first argument is a pointer to the destination of the
-mapping, the second argument specifies the source address
-of the map operation. The \verb|sync_type| parameter defines
-if the data mapping is blocking or non-blocking.
-\begin{quote}
-\begin{verbatim}
-OMPT_API void ompt_target_map(
-  void* dst,
-  void* src,
-  ompt_target_device_id_t id,
-  ompt_data_map_t map_type,
-  ompt_target_sync_t sync_type,
-  ompt_data_size_t bytes
-);
-\end{verbatim}
-\end{quote}
-\end{comment}
 
 \section{Target Device Tracing (Optional)}
 \label{sec:target-device-records}
@@ -1996,7 +1756,6 @@ OMPT_TARG_API int ompt_target_set_trace_ompt(
 The argument \verb|device| is a handle for the target device whose performance monitoring may be altered by invoking this function. 
 The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| may be enabled or disabled by this invocation.
 Actual record types are specified using positive numbers; an \verb|rtype| of 0 indicates that all record types will be enabled or disabled.
-% If the function \verb|ompt_record_set_t| is called for a device for which recording is currently active, its behavior is undefined.
 Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|.
 \begin{table}
 \centering
@@ -2034,8 +1793,6 @@ The argument \verb|device| is a handle for the target device whose performance m
 The boolean \verb|enable| indicates whether recording of events may be enabled or disabled by this invocation.
 The kinds of native device monitoring to enable or disable are specified by \verb|flags|. Each kind of monitoring is specified by a flag bit. Flags can be composed by using logical {\tt or}  to combine enumeration values from type \verb|ompt_native_mon_flags_t|.
 
-% If the function \verb|ompt_record_native_set| is called for a device for which recording is currently active, its behavior is undefined.
-
 \subsection{Start and Stop Recording Traces}
 \label{sec:start-stop-recording}
 
@@ -2052,10 +1809,7 @@ typedef void (*ompt_target_buffer_request_callback_t) (
 \end{verbatim}
 \end{quote}
 As necessary, the OpenMP runtime will asynchronously invoke \verb|ompt_target_buffer_request_callback_t| to request a buffer to store event records for device \verb|device_id|.
-%  \marginpar{What thread will execute these callbacks? Should it be specified? When are these callbacks permitted and prohibited?}
-% The argument \verb|buffer| to the buffer request callback is the address of a pointer to a buffer. 
 A tool should set \verb|*buffer| to point to a buffer where device events may be recorded and \verb|*bytes| to the length of that buffer.
-%The argument \verb|bytes| is a pointer to a \verb|size_t| that indicates the size of the buffer a tool is providing for the device to fill with trace events. 
 A buffer request callback  may set \verb|*bytes| to 0 if it does not want to provide a buffer for any reason. If a callback sets \verb|*bytes| to 0, further recording of events for the device will be disabled until the next invocation of \verb|ompt_target_start_trace|. This will cause the target device to drop future trace records until recording is restarted.
 
 The \emph{buffer complete} callback has the following type signature: 
@@ -2072,9 +1826,7 @@ typedef void (*ompt_target_buffer_complete_callback_t) (
 \end{quote}
 A target device triggers a call to \verb|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
 The argument \verb|device_id| indicates the device whose events the buffer contains. The argument \verb|buffer| is the address of a buffer previously allocated by the \emph{buffer request} callback. The argument \verb|bytes| indicates the full size of the buffer. The arguments \verb|begin| and \verb|end|, respectively, are opaque cursors that indicates the position at the beginning of the first record in the buffer and the position after the last record in the buffer. If \verb|begin| is equal to \verb|end|, the buffer is empty. 
-% \marginpar{What thread will execute these callbacks? Should it be specified? When are these callbacks permitted and prohibited?}
 
-% It is implementation-defined when an OpenMP runtime triggers this callback. 
 Under normal operating conditions, every event buffer provided to a device by a \emph{buffer request} callback will receive a \emph{buffer complete} callback before the OpenMP runtime shuts down. If an exceptional condition terminates  execution of an OpenMP program, the OpenMP runtime may choose to not provide a \emph{buffer complete} callback for buffers provided to any device.
 
 To start, pause, or stop tracing for a specific target device associated with the handle \verb|device|, 
@@ -2134,7 +1886,6 @@ OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
 );
 \end{verbatim}
 \end{quote}
-%Each of the OMPT event types has an associated record type. 
 \sloppy
 \verb|ompt_target_buffer_get_record_type| returns either \verb|ompt_record_ompt| if the record represents a OMPT event,  \verb|ompt_record_correlation| if the purpose of the record is to associate the ID of an activity on a device with a host target task id, \verb|ompt_record_native| if the record represents a device native record type that does not represent an OMPT event record, or \verb|ompt_record_invalid| if the cursor is out of bounds. 
 
@@ -2195,22 +1946,15 @@ A  \verb|ompt_target_buffer_get_record_native_abstract_t| record contains severa
 \label{sec:enabling}
 
 Section~\ref{sec:env} describes how an OpenMP runtime uses the value of the {\em omp-tool-var} ICV to decide whether or not an OpenMP runtime will try to register a performance tool prior to runtime initialization.
-%  and how one may use the \verb|OMP_TOOL|  environment variable to control this process. 
-% An OpenMP runtime must maintain information to support a performance tool only if a performance tool registers itself with the runtime.
 Section~\ref{sec:init} explains how a registered performance tool initializes itself.
 
 \subsection{Tool Registration}
 \label{sec:env}
 
-
-%*** Jim: This environment variable seems confusing. (Maybe it's OK, but the default to true seems odd)
-
 The  \verb|OMP_TOOL| environment variable sets the {\em omp-tool-var} ICV, which controls whether or not an OpenMP 
 runtime will try to register a performance tool or not. The value assigned to \verb|OMP_TOOL| is 
 case insensitive and may have leading and trailing white space.  The value of
 this environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb|OMP_TOOL| is set to any value other than \verb|enabled| or \verb|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \verb|OMP_TOOL| and the program's execution will terminate. If \verb|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \verb|enabled|.
-
-
 
  \begin{table}
 \begin{center}
@@ -2219,17 +1963,11 @@ this environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb
  {\em omp-tool-var} value & action \\\hline
 enabled & The OpenMP runtime will call  \verb|ompt_tool| before initializing itself.   \\\hline
 disabled & The OpenMP runtime will not call  \verb|ompt_tool|, regardless of whether a tool is present or not.  \\\hline
-%*** Jim: Is ompd_enable wrong? Or is this a vestige of the OMPD interface that is still required?
-% false & OMPT is disabled unless explicitly turned on by call to \verb|ompd_enable|.  \\\hline
-
-% always &  \verb|ompt_initialize| is  called after the OpenMP runtime initializes itself. Regardless of the return value from \verb|ompt_initialize|, the OpenMP runtime must maintain runtime state information for each OpenMP thread and  appropriately respond to  any invocations of the inquiry API.  \\\hline
 \end{tabular}
 \end{center}
 \caption{OpenMP runtime responses to settings of the {\em omp-tool-var} ICV.}
 \label{table:env-var}
 \end{table}
-
-% The return value expected from \verb|ompt_tool| is a pointer to the tool's implementation of  \verb|ompt_initialize|. If the returned pointer is non-NULL, the OpenMP runtime will invoke the tool's \verb|ompt_initialize|, maintain runtime state information for each OpenMP thread,  respond to any invocations of the inquiry API, and invoke any registered callbacks when appropriate.
 
 \sloppy
 Table~\ref{table:env-var} describes the action that an OpenMP runtime system will take in response to possible values of {\em omp-tool-var}.
@@ -2294,18 +2032,6 @@ ompt_interface_fn_t ompt_get_thread_id_fn = lookup("ompt_get_thread_id");
 Other functions in the OMPT API may be looked up analogously.
 If a named function is not available in an OpenMP runtime's implementation of OMPT, \verb|lookup| will return NULL.
 
-
-
-
-% the notion of clean point registration is meaningless without a debugger standard -- johnmc 10/25/2013
-\begin{comment}
-An OpenMP runtime system {\em may} allow registration of a tool after initialization of the OpenMP runtime at a {\em clean point}. An OpenMP runtime is said to be at a clean point when no pthread is inside a parallel region. An OpenMP runtime system will not necessarily attempt to register a tool at a clean point unless a debugger has previously called \verb|ompd_enable(true)| as described in Section~\ref{sec:debug-init}.
-\end{comment}
-
-
-
-
-
 \paragraph{Registering Callbacks.} 
 Tools register callbacks to receive notification of various events that occur as an OpenMP program executes using the OMPT API function \verb|ompt_set_callback|. The signature for this function is shown below{
  
@@ -2358,32 +2084,8 @@ OMPT_API int ompt_get_callback(
 \noindent
 If a callback has been registered,  \verb|ompt_get_callback|  will return 1 and set {\tt callback} to the address of the callback function; otherwise, \verb|ompt_get_callback| will return 0.
 
-
-
-
-
-
-\begin{comment}
-\section{OpenMP Runtime Library Global Variables}
-\label{sec:globals}
-
-A common idiom has emerged to support the manipulation of a programming abstraction by debuggers: the programming abstraction provides a plugin library that the debugger  loads into its own address space. The debugger then uses an API provided by the plugin library to inspect and manipulate state associated with the programming abstraction in a target. The target may be a live process or a core file. Such plugin libraries have been defined to support debugging of threads~\cite{libthreaddb} and MPI~\cite{CownieGropp99}. A 2003 paper describes a previous effort to define a debugging support library for OpenMP~\cite{Cownie:2003:DOD:1761900.1761915}. 
-
-For OpenMP, we are separately developing a standard for OMPD---a shared library that will serve as a debugger plugin. The purpose of this library is to help a debugger  interact with the state of an OpenMP target process. As part of the OMPT interface, we simply require that 
- the OpenMP runtime system provides a public variable \verb|ompd_dll_locations|, which is an argv-style array of filename strings that provides the location(s) of any compatible OMPD plugin implementations (if any).
-
-\begin{quote}
-\begin{verbatim}
-_OMP_EXTERN  const char * * ompd_dll_locations;
-\end{verbatim}
-\end{quote}
-
-\noindent
-The value of \verb|ompd_dll_locations| may be NULL initially, but must be filled in before \verb|ompt_initialize| is called. After that, \verb|ompd_dll_locations|  will point to a vector of zero or more NULL-terminated pathname strings. There are no filename conventions for pathname strings. The last entry in the vector will be NULL. 
-\end{comment}
-
- \section{Tool Control for Applications}
- \label{sec:app-facing}
+\section{Tool Control for Applications}
+\label{sec:app-facing}
  
  In OMPT, there is only one application-facing routine:  \verb|ompt_control|. 
 An application may call the function \verb|ompt_control|  to  control tool operation. While tool support for \verb|ompt_control| is optional, the runtime is required to pass a control command to a tool if the tool registered a callback with the \verb|ompt_event_control| event. As an application-facing routine, this function has type signatures for both C and Fortran:
@@ -2430,8 +2132,6 @@ A command code of 3 asks a tool to flush any performance data that it has buffer
 A command code of 4 turns monitoring off permanently;  the tool may perform finalization at this point and write all of its outputs. 
 
 Other values of command  and modifier appropriate for any tool will be tool specific. Tool-specific commands codes must be $\geq$ 64. Tools must ignore command codes that they are not explicitly designed to handle and implement callbacks for such codes as no-ops.
-
-%xxx
 
 \section{Final Notes}
 \label{sec:notes}
