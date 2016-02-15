@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised February 8, 2016}
+\date{Revised February 14, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -184,6 +184,22 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \end{description}
 
+\descheader{Overhead State}
+
+\begin{description}
+
+\item \verb|omp_state_overhead| 
+
+  A thread may be reported as being in the overhead state at any point while executing within an OpenMP runtime, e.g., while
+    preparing a parallel region, 
+    preparing a new explicit task,
+    preparing a worksharing region, or
+    preparing to execute iterations of a parallel loop.  
+  It is compliant to report some or all OpenMP runtime overhead 
+  as work.
+
+\end{description}
+
 \descheader{Barrier Wait States}
 
 \begin{description}
@@ -213,27 +229,6 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
   thread begins to wait at the barrier.
   A  compliant runtime implementation may report \verb|omp_state_wait_barrier| for explicit barriers.
   
-\end{description}
-  
-\descheader{Target Wait States}
-
-\begin{description}
-
-\item \verb|omp_state_wait_target| 
-
-  The thread is waiting for a target region to complete.
-  
-\item \verb|omp_state_wait_target_map| 
-
-  The thread is waiting for a target data mapping operation to complete. 
-  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target data constructs.
-
-\item \verb|omp_state_wait_target_update| 
-
-  The thread is waiting at a target  update operation to complete. 
-  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target update constructs.
-
-
 \end{description}
   
 \descheader{Task Wait States}
@@ -304,21 +299,25 @@ This flexibility may significantly simplify the maintenance of states associated
   an ordered construct, or late, when the thread begins
   to wait to enter the ordered region. 
   
-  \end{description}
-
-\descheader{Overhead State}
+\end{description}
+  
+\descheader{Target Wait States}
 
 \begin{description}
 
-\item \verb|omp_state_overhead| 
+\item \verb|omp_state_wait_target| 
 
-  A thread may be reported as being in the overhead state at any point while executing within an OpenMP runtime, e.g., while
-    preparing a parallel region, 
-    preparing a new explicit task,
-    preparing a worksharing region, or
-    preparing to execute iterations of a parallel loop.  
-  It is compliant to report some or all OpenMP runtime overhead 
-  as work.
+  The thread is waiting for a target region to complete.
+  
+\item \verb|omp_state_wait_target_map| 
+
+  The thread is waiting for a target data mapping operation to complete. 
+  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target data constructs.
+
+\item \verb|omp_state_wait_target_update| 
+
+  The thread is waiting at a target  update operation to complete. 
+  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target update constructs.
 
 \end{description}
 
@@ -1382,7 +1381,7 @@ OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
 \end{quote}
 \sloppy
 \verb|ompt_target_buffer_get_record_type| returns either \verb|ompt_record_ompt| if the record represents a OMPT event,  
-%\verb|ompt_record_correlation| if the purpose of the record is to associate the identier for a device activity with a host target task id, 
+%\verb|ompt_record_correlation| if the purpose of the record is to associate the identifier for a device activity with a host target task id, 
 \verb|ompt_record_native| if the record represents a device native record type that does not represent an OMPT event record, or \verb|ompt_record_invalid| if the cursor is out of bounds. 
 
 Appendix~\ref{appendix:ompt-records} defines the corresponding enumeration type for \verb|ompt_record_type_t|. 
@@ -1661,13 +1660,13 @@ The purpose of these states is described in Section~\ref{sec:states}.
 
 \begin{verbatim}
 typedef enum omp_state_e {
-  /* work states (0..15) */
-  omp_state_work_serial            = 0x00, /* working outside parallel   */
-  omp_state_work_parallel          = 0x01, /* working within parallel    */
-  omp_state_work_reduction         = 0x02, /* performing a reduction     */
+  /* idle (0..15) */
+  omp_state_idle                   = 0x00, /* waiting for work           */
 
-  /* idle (16..31) */
-  omp_state_idle                   = 0x10, /* waiting for work           */
+  /* work states (16..31) */
+  omp_state_work_serial            = 0x10, /* working outside parallel   */
+  omp_state_work_parallel          = 0x11, /* working within parallel    */
+  omp_state_work_reduction         = 0x12, /* performing a reduction     */
 
   /* overhead states (32..63) */
   omp_state_overhead               = 0x20, /* non-wait overhead          */
@@ -1677,7 +1676,7 @@ typedef enum omp_state_e {
   omp_state_wait_barrier_implicit  = 0x41, /* implicit barrier           */
   omp_state_wait_barrier_explicit  = 0x42, /* explicit barrier           */
     
- /* task wait states (80..95) */
+  /* task wait states (80..95) */
   omp_state_wait_taskwait          = 0x50, /* waiting at a taskwait      */
   omp_state_wait_taskgroup         = 0x51, /* waiting at a taskgroup     */
 	
@@ -1688,14 +1687,13 @@ typedef enum omp_state_e {
   omp_state_wait_atomic            = 0x63, /* waiting for atomic         */
   omp_state_wait_ordered           = 0x64, /* waiting for ordered        */
   
-  /* target (112..127) */
+  /* target wait states (112..127) */
   omp_state_wait_target            = 0x70, /* waiting for target         */ 
   omp_state_wait_target_data       = 0x71, /* waiting for target data    */ 
   omp_state_wait_target_update     = 0x72, /* waiting for target update  */ 
 
   /* misc (128..143) */
   omp_state_undefined              = 0x80, /* undefined thread state     */
-  omp_state_first                  = 0x81, /* initial enumeration state  */
 } omp_state_t;
 \end{verbatim}
 \clearpage
@@ -1714,34 +1712,33 @@ typedef enum ompt_event_e {
   ompt_event_thread_end               = 2,  
   ompt_event_parallel_begin           = 3,  
   ompt_event_parallel_end             = 4,  
-  ompt_event_task_begin               = 5,  
-  ompt_event_task_end                 = 6,   
-  ompt_event_target_begin             = 7,  
-  ompt_event_target_end               = 8,  
-  ompt_event_control                  = 9,   
-  ompt_event_runtime_shutdown         = 10,  
+  ompt_event_task_create              = 5,  
+  ompt_event_task_schedule            = 6,
+  ompt_event_implicit_task            = 7,      
+  ompt_event_target                   = 8,  
+  ompt_event_target_data              = 9,  
+  ompt_event_target_submit            = 10,  
+  ompt_event_control                  = 11,   
+  ompt_event_runtime_shutdown         = 12,  
 
   /*--- Optional Events for Blame Shifting ---*/  	
-  ompt_event_idle	                    = 11,   
-  ompt_event_sync_region_wait         = 12, 
-  ompt_event_mutex_release            = 13, 
+  ompt_event_idle	                    = 13,   
+  ompt_event_sync_region_wait         = 14, 
+  ompt_event_mutex_release            = 15, 
 
-  /*--- Optional Events for Instrumentation-based Tools --- */      	    
-  ompt_event_implicit_task            = 14,  
-  ompt_event_initial_task             = 15,  				    
-  ompt_event_task_switch              = 16,   
-  ompt_event_task_dependences         = 17,  
-  ompt_event_task_dependence_pair     = 18   				    				   	
-  ompt_event_worksharing              = 19,  		              	 			    
-  ompt_event_master                   = 20,  
-  ompt_event_target_data_map          = 21, 	          	 			   
-  ompt_event_sync_region              = 22,  
-  ompt_event_init_lock                = 23,  
-  ompt_event_destroy_lock             = 24, 								    
-  ompt_event_mutex_acquire            = 25,  
-  ompt_event_mutex_acquired           = 26,  
-  ompt_event_nested_lock              = 27,   			            	 			         
-  ompt_event_flush                    = 28  
+  /*--- Optional Events for Instrumentation-based Tools --- */      	      
+  ompt_event_task_dependences         = 16,  
+  ompt_event_task_dependence_pair     = 17,   				    				   	
+  ompt_event_worksharing              = 18,  		              	 			    
+  ompt_event_master                   = 19,  
+  ompt_event_target_data_map          = 20, 	          	 			   
+  ompt_event_sync_region              = 21,  
+  ompt_event_init_lock                = 22,  
+  ompt_event_destroy_lock             = 23, 								    
+  ompt_event_mutex_acquire            = 24,  
+  ompt_event_mutex_acquired           = 25,  
+  ompt_event_nested_lock              = 26,   			            	 			         
+  ompt_event_flush                    = 27  
 } ompt_event_t;
 \end{verbatim}
 
