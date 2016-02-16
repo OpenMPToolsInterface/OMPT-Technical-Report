@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised February 14, 2016}
+\date{Revised February 16, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -336,7 +336,7 @@ This flexibility may significantly simplify the maintenance of states associated
 \item \verb|omp_state_first| 
 
 \sloppy
-  This state is a placeholder exclusively reserved for use by the OMPT runtime call \verb|ompt_enumerate_state| (see Section~\ref{ompt_enumerate_state}), which is used to enumerate all available runtime states. A thread will never be reported in this state.
+  This state is a placeholder exclusively reserved for use by the OMPT runtime call \verb|ompt_enumerate_states| (see Section~\ref{ompt_enumerate_states}), which is used to enumerate all available runtime states. A thread will never be reported in this state.
 
 \end{comment}
 
@@ -378,7 +378,7 @@ discretion of a runtime system implementer.
 \item \verb|ompt_event_thread_begin|
 
 The OpenMP runtime invokes this callback in the context of an initial thread just after it initializes the runtime, or in the context of a new thread created by the runtime just after the thread initializes itself. In either case, this callback must be the first callback for a thread
-and must occur before the thread executes any OpenMP tasks. This callback has type signature \verb|ompt_thread_callback_t|. 
+and must occur before the thread executes any OpenMP tasks. This callback has type signature \verb|ompt_thread_begin_callback_t|. 
 The callback argument \verb|thread_type| indicates the type of the thread: initial, worker, or other.
 
 
@@ -388,7 +388,7 @@ The OpenMP runtime invokes this callback
 after an OpenMP thread completes all of
 its tasks but before the thread is destroyed. The callback
 executes in the context of the OpenMP thread. This callback must be the last callback event for any worker thread; it is optional for other types of threads.
-This callback has type signature \verb|ompt_thread_callback_t|. 
+This callback has type signature \verb|ompt_thread_end_callback_t|. 
 
 \end{description}
 
@@ -554,7 +554,7 @@ Since waiting indicates the absence of any activity, a thread will not receive a
 \item \verb|ompt_event_idle|
 
   \sloppy
-  This callback has type signature \verb|ompt_scoped_callback_t|. 
+  This callback has type signature \verb|ompt_idle_callback_t|. 
   The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| when a thread waits for work outside a parallel region.
   The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_end| before the thread  begins to execute an implicit task for
    a parallel region or terminates. The callback executes in the environment of the waiting thread.  
@@ -622,7 +622,7 @@ and a consumer (\verb|second_task_id|) that blocked execution of the consumer.
 This callback will occur before the consumer knows that the dependence is satisfied. This may happen early or late.
 Note: this callback is used only to report blocking dependences between sibling tasks whose lifetimes overlap. 
 No callback will occur if a producer task finishes before a consumer task is created.
-This callback has type signature \verb|ompt_task_pair_callback_t|. 
+This callback has type signature \verb|ompt_task_dependence_callback_t|. 
 \end{description}
 
 
@@ -730,7 +730,7 @@ before the task
    The \verb|hint| parameter is the lock hint value passed to a hinted lock initialization routine.
    The \verb|kind| parameter is a small integer indicating the lock implementation chosen by the OpenMP runtime. 
    The mapping between values of \verb|kind| and the lock implementations they represent can be determined using 
-   \verb|ompt_enumerate_sync_kinds|. 
+   \verb|ompt_enumerate_mutex_kinds|. 
 
 \item \verb|ompt_event_destroy_lock|
  
@@ -792,7 +792,7 @@ before the task
    The OpenMP runtime invokes this callback just after
    performing a flush operation.  This callback executes in the
    context of the task that encountered the flush construct.
-   This callback has type signature \verb|ompt_thread_callback_t|. 
+   This callback has type signature \verb|ompt_flush_callback_t|. 
 
 \end{description}
 
@@ -830,14 +830,14 @@ typedef uint64_t ompt_parallel_id_t;
   A parallel region's identifier is assigned
   when the region is created.  Identifiers assigned to parallel regions on each device are unique from the time an 
   OpenMP runtime is initialized until it is shut down. 
-  A parallel region identifer can be retrieved
-  on demand by invoking the \verb|ompt_get_parallel_id|  function (described in Section~\ref{sec:parallel-inquiry}).
+  A parallel region identifer can be retrieved for an enclosing parallel region
+  on demand using the function \verb|ompt_get_parallel_info|  (described in Section~\ref{sec:parallel-inquiry}).
   Tools should not assume that \verb|ompt_parallel_id_t| values are dense. 
-  The value 0 is reserved to indicate an invalid parallel id.
+  The value \verb|ompt_parallel_id_none| is reserved to indicate an invalid parallel id.
  
  
-  \subsection{Task Identifier}
-  Each OpenMP task has an associated identifer of type
+  \subsection{Task Region Identifier}
+  Each OpenMP task has an associated identifier of type
   \verb|ompt_task_id_t|. Task identifiers are assigned to
    initial, implicit, explicit, and target tasks.
 \begin{comment}
@@ -854,11 +854,20 @@ typedef uint64_t ompt_task_id_t;
   A task's identifier can be retrieved
   on demand by invoking the \verb|ompt_get_task_info|  function (described in Section~\ref{sec:task-region}).
   Tools should not assume that \verb|ompt_task_id_t| values for tasks are dense. 
-  The value 0 is reserved to indicate an invalid task id.
+  The value \verb|ompt_task_id_none| is reserved to indicate an invalid task identifier.
   
-\subsection{Wait Identifier}
+\subsection{Target Region Identifier}
+Each OpenMP target region has an associated identifier of type \verb|ompt_target_id_t|. 
+A unique target identifier is assigned on the host each time an instance of a target construct is encountered.  
+Identifiers assigned to target regions are unique from the time an OpenMP runtime is initialized until it is shut down. 
+The current target region identifier can be retrieved by invoking the \verb|ompt_get_target_id| function (described in Section~\ref{sec:target-region}).
+Tools should not assume that \verb|ompt_target_id_t| values for target regions are dense. 
+The value \verb|ompt_target_id_none| is reserved to indicate an invalid target identifier. The value \verb|ompt_target_id_none| will be returned if \verb|ompt_get_target_id| is invoked outside a target region.
 
-  Each thread instance maintains a {\em wait identifier} of type \verb|ompt_wait_id_t|. When a task executing on a thread is waiting for something, the thread's wait identifer indicates what the thread is awaiting. A wait identifier may represent a critical section {\em name}, a lock,  a program variable accessed in an atomic region, or a synchronization object internal to an OpenMP runtime implementation. 
+\subsection{Wait Identifier}
+Each thread instance maintains a {\em wait identifier} of type \verb|ompt_wait_id_t|. 
+When a task executing on a thread is waiting for something, the thread's wait identifer indicates what the thread is awaiting. 
+A wait identifier may represent a critical section {\em name}, a lock,  a program variable accessed in an atomic region, or a synchronization object internal to an OpenMP runtime implementation. 
 \begin{comment}
 \begin{quote}
 \begin{verbatim}
@@ -866,9 +875,8 @@ typedef uint64_t ompt_wait_id_t;
 \end{verbatim}
 \end{quote}
 \end{comment}
- A thread's wait identifier can be retrieved on
-  demand by invoking the \verb|ompt_get_state| function (described in Section~\ref{sec:thread-inquiry}).
-    When a thread is not in a wait state, a thread's wait identifier has an undefined value.
+A thread's wait identifier can be retrieved on demand by invoking the \verb|ompt_get_state| function (described in Section~\ref{sec:thread-inquiry}).
+When a thread is not in a wait state, a thread's wait identifier has an undefined value.
  
 \subsection{Structure to Support Classification of Stack Frames}
 
@@ -928,8 +936,8 @@ typedef struct ompt_frame_s {
 \begin{tabular}{|l|p{2in}|p{2in}|}
 \hline
 exit / enter 	& enter = null										& enter = defined \\\hline\hline
-exit = null		& case 1)  initial task in user code case 2) task that is created but not yet scheduled &  task entered the runtime to create an implicit, explicit, or target task \\\hline
-exit = defined 	& non-initial task in (or soon to be in) user code							& non-initial task entered the runtime and created an implicit, explicit, or target task\\\hline
+exit = null		& case 1)  initial task in user code case 2) task that is created but not yet scheduled &  task entered the runtime to schedule an implicit, explicit, or target task \\\hline
+exit = defined 	& non-initial task in (or soon to be in) user code							& non-initial task entered the runtime and scheduled an implicit, explicit, or target task\\\hline
 \end{tabular}
 \end{center}
 \caption{Meaning of various values for {\tt exit\_frame} and {\tt enter\_frame}.}
@@ -956,7 +964,7 @@ In the presence of nested parallelism, a tool may observe a sequence of \verb|om
  Specifically, since OpenMP Execution Library Routines are not guaranteed to be async signal safe, they might acquire a lock that may already be held when an OMPT callback is involved.
  
  \subsection{Enumerate States}
- \label{ompt_enumerate_state}
+ \label{ompt_enumerate_states}
  
  The OpenMP runtime is allowed to support other states in addition to those described in this document.
 For instance, a particular runtime system may want to 
@@ -968,7 +976,7 @@ the following interface for enumerating all states that a particular runtime sys
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_enumerate_state(
+OMPT_API int ompt_enumerate_states(
   omp_state_t current_state, 
   omp_state_t *next_state, 
   const char **next_state_name
@@ -978,19 +986,19 @@ OMPT_API int ompt_enumerate_state(
 
 \noindent
 To begin enumerating the states that a runtime system supports,
-the value \verb|omp_state_first| should be supplied for \verb|current_state| in the call to \verb|ompt_enumerate_state| that begins the enumeration.
+the value \verb|omp_state_first| should be supplied for \verb|current_state| in the call to \verb|ompt_enumerate_states| that begins the enumeration.
 The argument \verb|next_state| is a pointer to an \verb|omp_state_t| that will be set to the code for the next state in the enumeration.
 The argument \verb|next_state_name| is a pointer to a location that will be filled in with a pointer to the name associated with \verb|next_state|. 
-Subsequent invocations of \verb|ompt_enumerate_state| should pass the code returned in \verb|next_state| by the prior call.
-Whenever one or more states are left in the enumeration, \verb|ompt_enumerate_state| will return 1.
-When the last state in the enumeration is passed to \verb|ompt_enumerate_state| as \verb|current_state|, the function will return 0 indicating that the enumeration is complete.
+Subsequent invocations of \verb|ompt_enumerate_states| should pass the code returned in \verb|next_state| by the prior call.
+Whenever one or more states are left in the enumeration, \verb|ompt_enumerate_states| will return 1.
+When the last state in the enumeration is passed to \verb|ompt_enumerate_states| as \verb|current_state|, the function will return 0 indicating that the enumeration is complete.
 An example of how to enumerate the states supported by an OpenMP runtime is shown below:
 
 \begin{quote}
 \begin{verbatim}
 omp_state_t state = omp_state_first;
 const char *state_name;
-while (ompt_enumerate_state(state, &state, &state_name)) {
+while (ompt_enumerate_states(state, &state, &state_name)) {
   // tool notes that the runtime supports omp_state_t "state" 
   // associated with "state_name" 
 }
@@ -998,16 +1006,16 @@ while (ompt_enumerate_state(state, &state, &state_name)) {
 \end{quote}
 
  \subsection{Enumerate Mutex Implementations}
- \label{ompt_enumerate_sync_kinds}
+ \label{ompt_enumerate_mutex_kinds}
  
-The OpenMP standard recognizes that a runtime system may implement locks, nest locks, critical sections, and atomic regions in several different ways. For that reason, a user program can provide the runtime system with hints that help the runtime system to select appropriate implementations.
+The OpenMP standard recognizes that a runtime system may implement locks, nest locks, critical sections, and atomic regions in several different ways. For that reason, a user program can provide hints to help the runtime system to select appropriate implementations.
 When a lock or nest lock is initialized, the \verb|ompt_event_init_lock| callback receives the argument \verb|kind|---a small integer that indicates the lock implementation chosen by the OpenMP runtime. Similarly,  the \verb|ompt_event_mutex_acquire| callback receives the argument \verb|kind| to indicate 
 the implementation of a lock, critical section, atomic region, or ordered section. To enable a tool to provide insight into a runtime system's implementation choices, OMPT provides
 the following interface for enumerating the kinds of synchronization implementations it employs.
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_enumerate_sync_kinds(
+OMPT_API int ompt_enumerate_mutex_kinds(
   uint32_t current_kind, 
   uint32_t *next_kind, 
   const char **next_kind_name
@@ -1017,21 +1025,21 @@ OMPT_API int ompt_enumerate_sync_kinds(
 
 \noindent
 \sloppy
-To begin enumerating the synchronization implementations that a runtime  employs,
- \verb|ompt_sync_kind_first| should be supplied as the initial value for \verb|current_kind| in the call to \verb|ompt_enumerate_sync_kinds| to  begin the enumeration.
+To begin enumerating the mutex implementations that a runtime  employs, one should supply 
+ \verb|ompt_mutex_kind_first| as the value for \verb|current_kind| in the first call to \verb|ompt_enumerate_mutex_kinds|.
 The argument \verb|next_kind| is a pointer to an integer that will be set to the code for the next implementation in the enumeration.
-The argument \verb|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the synchronization implementation associated with \verb|next_kind|. 
-Each subsequent invocation of \verb|ompt_enumerate_sync_kinds| should pass the code returned in \verb|next_kind| by the prior call.
-Whenever one or more synchronization implementations are left in the enumeration, \verb|ompt_enumerate_sync_kinds| will return 1.
-When the last synchronization implementation type in the enumeration is passed to \verb|ompt_enumerate_sync_kinds| as \verb|current_kind|, 
+The argument \verb|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the mutex implementation associated with \verb|next_kind|. 
+Each subsequent invocation of \verb|ompt_enumerate_mutex_kinds| should pass the code returned in \verb|next_kind| by the prior call.
+Whenever one or more mutex implementations are left in the enumeration, \verb|ompt_enumerate_mutex_kinds| will return 1.
+When the last mutex implementation type in the enumeration is passed to \verb|ompt_enumerate_mutex_kinds| as \verb|current_kind|, 
 the function will return 0 indicating that the enumeration is complete.
-An example of how to enumerate the types of synchronization implementations supported by an OpenMP runtime is shown below:
+An example of how to enumerate the types of mutex implementations supported by an OpenMP runtime is shown below:
 
 \begin{quote}
 \begin{verbatim}
-uint32_t kind = ompt_sync_kind_first;
+uint32_t kind = ompt_mutex_kind_first;
 const char *kind_name;
-while (ompt_enumerate_sync_kinds(kind, &kind, &kind_name)) {
+while (ompt_enumerate_mutex_kinds(kind, &kind, &kind_name)) {
   // tool notes that the runtime "kind" is associated with "kind_name" 
 }
 \end{verbatim}
@@ -1043,16 +1051,14 @@ while (ompt_enumerate_sync_kinds(kind, &kind, &kind_name)) {
 
 Function \verb|ompt_get_thread_id| returns the thread identifier for the 
 current thread.
-
 \begin{quote}
 \begin{verbatim}
 OMPT_API ompt_thread_id_t ompt_get_thread_id(void);
 \end{verbatim}
 \end{quote}
- 
- \noindent
-This function returns the value 0 if the thread is unknown to the OpenMP runtime.  {\em This function is async signal safe.}
- 
+If the current thread is unknown to the OpenMP runtime, the function returns \verb|ompt_thread_id_none|.
+{\em This function is async signal safe.}
+
 Function \verb|ompt_get_state| returns the state of the 
 current thread. If the returned state indicates that the thread is waiting for a lock, nest lock, critical section, atomic region, or ordered region, it will fill in \verb|*wait_id| with the wait identifier associated with the state.  {\em This function is async signal safe.}
 
@@ -1066,55 +1072,30 @@ OMPT_API omp_state_t ompt_get_state(
  
 \subsection{Parallel Region Inquiry} 
 \label{sec:parallel-inquiry} 
-Function \verb|ompt_get_parallel_id| returns the identifier associated with an enclosing parallel region. 
+Function \verb|ompt_get_parallel_info| returns information about the parallel region, if any, at the specified ancestor level in the current execution context.
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API ompt_parallel_id_t ompt_get_parallel_id(
-  int ancestor_level
+OMPT_API _Bool ompt_get_parallel_info(
+  int ancestor_level,
+  ompt_parallel_id_t *parallel_id, 
+  int *team_size
 );
 \end{verbatim}
 \end{quote}
 
 \noindent 
-The function takes an ancestor level as an argument. By specifying different values for
-ancestor level, one can access information about all enclosing parallel regions. 
-The meaning of different values for the \verb|ancestor_level| argument to \verb|ompt_get_parallel_id| is given in Table~\ref{tab:ancestor}.
-If there is no enclosing parallel region at the specified ancestry level,  \verb|ompt_get_parallel_id| will return 0. {\em This function is async signal safe.}
-
-\begin{table}
-\centering
-\begin{tabular}{|l|l|}
-\hline
-ancestor level  & meaning\\\hline
- 0 & current parallel region  \\\hline
-1 &parallel region directly enclosing region at ancestor level 0 \\\hline
-2 & parallel region directly enclosing region at ancestor level 1 \\\hline
-... & \\\hline
-\end{tabular}
-\caption{Meaning of different  values for the {\tt ancestor\_level} argument to {\tt ompt\_get\_parallel\_id}.}
-\label{tab:ancestor}
-\end{table}
- 
- Function \verb|ompt_get_parallel_team_size| returns  
- the number of threads associated with a parallel region:
- 
- 
-\begin{quote}
-\begin{verbatim}
-OMPT_API int ompt_get_parallel_team_size(
-  int ancestor_level
-);
-\end{verbatim}
-\end{quote}
-
-\noindent
- This function returns the value -1 if there is no enclosing parallel region at the specified ancestry level. {\em This function is async signal safe.}
+Ancestor level 0 refers to the current parallel region; 
+information about enclosing parallel regions may be obtained using higher ancestor levels. 
+Function \verb|ompt_get_parallel_info| returns a Boolean, which indicates whether there is a parallel region at the specified ancestor level.
+The function results \verb|*parallel_id| and \verb|*team_size| indicate properties of the parallel region at the specified ancestor level.
+If there is no enclosing parallel region at the specified ancestry level, the values of \verb|*parallel_id| and \verb|*team_size| are undefined.
+{\em This function is async signal safe.}
  
 \subsection{Task Region Inquiry}
 \label{sec:task-region}
 
-An inquiry function provides information about implicit, explicit, target, and degenerate tasks:
+Function \verb|ompt_get_task_info| provides information about the task, if any, at the specified ancestor level in the current execution context.
 
 \begin{quote}
 \begin{verbatim}
@@ -1127,14 +1108,12 @@ OMPT_API _Bool ompt_get_task_info(
 );
 \end{verbatim}
 \end{quote}
-
-Function \verb|ompt_get_task_info|  identifies a task by an ancestor level. 
-Ancestor level 0 refers to the current task. 
-Information about other tasks in the current execution context may be queried at higher ancestor levels. 
-Function \verb|ompt_get_task_info| returns an a boolean, which indicates whether task information is available at the requested ancestor level.
+\noindent
+Ancestor level 0 refers to the current task; information about ancestor tasks in the current execution context may be queried at higher ancestor levels. 
+Function \verb|ompt_get_task_info| returns a Boolean, which indicates whether there is a task at the specified ancestor level.
 {\em This function is async signal safe.} 
 
-A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be 0. A degenerate task will be associated with the enclosing parallel region. If the task is outside any parallel region, the value returned in \verb|par_id| will be 0.
+A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|.
 
 \begin{table}
 \centering
@@ -1153,6 +1132,17 @@ depth & meaning\\\hline
 Using values inside  \verb|ompt_frame_t| objects returned by calls to  \verb|ompt_get_task_info|, a tool can analyze  frames in the call stack and identify ones that exist on behalf of the runtime system.\footnote{A frame on the call stack is said to exist on behalf of an OpenMP runtime if it is a frame for a runtime system routine, or if it belongs to a library function called by a runtime system routine, directly or indirectly.} 
 This capability enables a tool to map from an implementation-level view of the call stack back to a source-level view that is easier for application developers to understand. 
 Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| objects with multiple threads and nested parallelism.
+
+\subsection{Target Region Inquiry}
+\label{sec:task-region}
+
+Function \verb|ompt_get_target_id| provides the identifier for a thread's current target region, if any.
+\begin{quote}
+\begin{verbatim}
+OMPT_API ompt_target_id_t ompt_get_target_id(void);
+\end{verbatim}
+\end{quote}
+This function returns the value 0 if the thread invoking it is outside a target region.  {\em This function is async signal safe.}
 
 \subsection{Target Device Inquiry}
 \label{sec:target-region}
@@ -1241,7 +1231,7 @@ A tool uses function \verb|ompt_target_set_trace_ompt| to enable or disable the 
 \begin{verbatim}
 OMPT_TARG_API int ompt_target_set_trace_ompt(
   ompt_target_device_t *device,      /* target device handle      */
-  _Bool enable,                  /* enable or disable         */
+  _Bool enable,                      /* enable or disable         */
   ompt_event_t etype                 /* an event type             */
 );
 \end{verbatim}
@@ -1415,16 +1405,16 @@ OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlati
 \subsection{Processing Native Trace Records in a Buffer}
 \label{sec:native-record-data}
 
-To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with buffer:
-\begin{quote}
+To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with a buffer. \begin{quote}
 \begin{verbatim}
 OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer, 
-  ompt_target_buffer_cursor_t current
+  ompt_target_buffer_cursor_t current,
+  ompt_target_id_t *host_op_id
 );
 \end{verbatim}
 \end{quote}
-The pointer returned  may point into the trace buffer, or it may point into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. 
+The pointer returned  may point into the trace buffer, or it may point into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. If the function returns a non-NULL result, it will also set \verb|*host_op_id| to identify host-side identifier for the operation associated with the record.
 A subsequent call to \verb|ompt_target_buffer_get_record_native| may overwrite the contents of the fields in the record returned by a prior invocation.
 
 Function  \verb|ompt_target_buffer_get_record_native_abstract| can be used by a tool to acquire basic information about a native record and handle it even without full support for  native records from the associated device.
@@ -1437,7 +1427,7 @@ ompt_target_buffer_get_record_native_abstract(
 
 \end{verbatim}
 \end{quote}
-A  \verb|ompt_target_buffer_get_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field is points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The precise semantics of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. Finally, \verb|target_task_id| indicates the target task with which this record is associated. If there is no associated target task or the associated target task is unknown,  \verb|target_task_id|  will be  0.
+A  \verb|ompt_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field is points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The meaning of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. 
 
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
@@ -1750,93 +1740,105 @@ This section describes miscellaneous enumeration types used by tool callbacks.
 \begin{verbatim}
 #define OMPT_API                            /* used to mark OMPT functions obtained from     *
                                              * lookup function passed to ompt_initialize     */ 
+                                             
 #define OMPT_TARG_API                       /* used to mark OMPT functions obtained from     *
                                              * lookup function passed to                     *
                                              * ompt_target_get_device_info                   */
-typedef uint64_t ompt_thread_id_t;          /* uniquely identifies the thread                */ 
-typedef uint64_t ompt_task_id_t;            /* uniquely identifies the task instance         */
-typedef uint64_t ompt_parallel_id_t;        /* uniquely identifies the parallel instance     */
-typedef uint64_t ompt_wait_id_t;            /* identify what a thread is awaiting            */
-typedef uint64_t ompt_target_activity_id_t; /* ID of an activity on a device                 */
+                                             
+typedef uint64_t ompt_thread_id_t;          /* uniquely identifies a thread                  */ 
+typedef uint64_t ompt_parallel_id_t;        /* uniquely identifies a parallel region         */
+typedef uint64_t ompt_task_id_t;            /* uniquely identifies a task region             */
+typedef uint64_t ompt_target_id_t;          /* uniquely identifies a target region           */
+typedef uint64_t ompt_wait_id_t;            /* identifies what a thread is awaiting          */
+typedef uint64_t ompt_target_activity_id_t; /* uniquely identifies an activity on a device   */
 typedef void ompt_target_device_t;          /* opaque object representing a target device    */
 typedef uint64_t ompt_target_time_t;        /* raw time value on a device                    */
 typedef void ompt_target_buffer_t;          /* opaque handle for a target buffer             */ 
 typedef uint64_t ompt_target_buffer_cursor_t; /* opaque handle for position in target buffer */
 
 typedef enum ompt_thread_type_e {
-  ompt_thread_initial  = 1,
-  ompt_thread_worker   = 2,
-  ompt_thread_other    = 3
+  ompt_thread_initial                 = 1,
+  ompt_thread_worker                  = 2,
+  ompt_thread_other                   = 3
 } ompt_thread_type_t;
 
 typedef enum ompt_scope_endpoint_e {
-  ompt_scope_begin     = 1,
-  ompt_scope_end       = 2
+  ompt_scope_begin                    = 1,
+  ompt_scope_end                      = 2
 } ompt_scope_endpoint_t;
 
 typedef enum ompt_sync_region_kind_e {
-  ompt_sync_region_barrier    = 1, 
-  ompt_sync_region_taskwait   = 2,
-  ompt_sync_region_taskgroup  = 3
+  ompt_sync_region_barrier            = 1, 
+  ompt_sync_region_taskwait           = 2,
+  ompt_sync_region_taskgroup          = 3
 } ompt_sync_region_kind_t;
 
 typedef enum ompt_target_data_op_e {
-  ompt_target_data_alloc           = 1,
-  ompt_target_data_transfer_to_dev      = 2,
+  ompt_target_data_alloc              = 1,
+  ompt_target_data_transfer_to_dev    = 2,
   ompt_target_data_transfer_from_dev  = 3,
-  ompt_target_data_delete   = 4
+  ompt_target_data_delete             = 4
 } ompt_target_data_op_t;
 
 typedef enum ompt_worksharing_type_e {
-  ompt_worksharing_loop = 1, 
-  ompt_worksharing_sections = 2,
-  ompt_worksharing_single_executor = 3,
-  ompt_worksharing_single_other = 4,
-  ompt_worksharing_workshare = 5,
-  ompt_worksharing_distribute = 6
+  ompt_worksharing_loop               = 1, 
+  ompt_worksharing_sections           = 2,
+  ompt_worksharing_single_executor    = 3,
+  ompt_worksharing_single_other       = 4,
+  ompt_worksharing_workshare          = 5,
+  ompt_worksharing_distribute         = 6
 } ompt_worksharing_type_t;
 
 typedef enum ompt_mutex_kind_e {
-  ompt_mutex            = 0x10,
-  ompt_mutex_lock       = 0x11,
-  ompt_mutex_nest_lock  = 0x12,
-  ompt_mutex_critical   = 0x13,
-  ompt_mutex_atomic     = 0x14,
-  ompt_mutex_ordered    = 0x20
+  ompt_mutex                          = 0x10,
+  ompt_mutex_lock                     = 0x11,
+  ompt_mutex_nest_lock                = 0x12,
+  ompt_mutex_critical                 = 0x13,
+  ompt_mutex_atomic                   = 0x14,
+  ompt_mutex_ordered                  = 0x20
 } ompt_mutex_kind_t;
 
 typedef enum ompt_native_mon_flags_e {
-  ompt_native_data_motion_explicit     = 1,
-  ompt_native_data_motion_implicit     = 2,
-  ompt_native_kernel_invocation        = 4,
-  ompt_native_kernel_execution         = 8,
-  ompt_native_driver                   = 16,
-  ompt_native_runtime                  = 32,
-  ompt_native_overhead                 = 64,
-  ompt_native_idleness                 = 128
+  ompt_native_data_motion_explicit    = 1,
+  ompt_native_data_motion_implicit    = 2,
+  ompt_native_kernel_invocation       = 4,
+  ompt_native_kernel_execution        = 8,
+  ompt_native_driver                  = 16,
+  ompt_native_runtime                 = 32,
+  ompt_native_overhead                = 64,
+  ompt_native_idleness                = 128
 } ompt_native_mon_flags_t;
 
 typedef enum  ompt_task_type_e {
-  ompt_task_initial    = 1,
-  ompt_task_implicit   = 2,
-  ompt_task_explicit   = 3,
-  ompt_task_target     = 4,
-  ompt_task_target_enter_data    = 5,
-  ompt_task_target_exit_data = 6,
-  ompt_task_target_update = 7,
-  ompt_task_degenerate = 8
+  ompt_task_initial                   = 1,
+  ompt_task_implicit                  = 2,
+  ompt_task_explicit                  = 3,
+  ompt_task_target                    = 4,
+  ompt_task_target_enter_data         = 5,
+  ompt_task_target_exit_data          = 6,
+  ompt_task_target_update             = 7,
+  ompt_task_degenerate                = 8
 } ompt_task_type_t;
 
 typedef enum ompt_invoker_e {
-  ompt_invoker_program = 1,         /* program invokes master task  */
-  ompt_invoker_runtime = 2          /* runtime invokes master task  */
+  ompt_invoker_program                = 1,         /* program invokes master task  */
+  ompt_invoker_runtime                = 2          /* runtime invokes master task  */
 } ompt_invoker_t;
+
+typedef enum ompt_target_map_flag_e {
+  // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
+  ompt_target_map_flag_to             = 1,
+  ompt_target_map_flag_from           = 2,
+  ompt_target_map_flag_alloc          = 4,
+  ompt_target_map_flag_release        = 8, 
+  ompt_target_map_flag_delete         = 16
+} ompt_target_map_flag_t;
 
 typedef enum ompt_task_dependence_flag_e {
   // a two bit field for the dependence type
-  ompt_task_dependence_type_out   = 1,
-  ompt_task_dependence_type_in    = 2,
-  ompt_task_dependence_type_inout = 3,
+  ompt_task_dependence_type_out       = 1,
+  ompt_task_dependence_type_in        = 2,
+  ompt_task_dependence_type_inout     = 3
 } ompt_task_dependence_flag_t;
 
 typedef struct ompt_task_dependence_s {
@@ -1844,28 +1846,18 @@ typedef struct ompt_task_dependence_s {
   uint32_t  dependence_flags;
 } ompt_task_dependence_t;
 
-typedef enum ompt_target_map_flag_e {
-  // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
-  ompt_target_map_flag_to      = 1,
-  ompt_target_map_flag_from    = 2,
-  ompt_target_map_flag_alloc   = 4,
-  ompt_target_map_flag_release = 8, 
-  ompt_target_map_flag_delete  = 16
-} ompt_target_map_flag_t;
-
 typedef struct ompt_frame_s {
-  void *exit_frame;    /* next frame is user code     */
-  void *enter_frame; /* user frame that reenters the runtime  */
+  void *exit_frame;                        /* runtime frame that reenters user code */
+  void *enter_frame;                       /* user frame that reenters the runtime  */
 } ompt_frame_t;
 
-#define ompt_hwid_none (-1)
-#define ompt_dev_task_none (~0ULL)
-#define ompt_time_none (~0ULL)
+#define ompt_hwid_none                (-1)
+#define ompt_dev_task_none            (~0ULL)
+#define ompt_time_none                (~0ULL)
+#define ompt_parallel_id_none         0#define ompt_task_id_none             0#define ompt_target_id_none           0
 
-#define ompt_lock_type_first 0
-#define ompt_atomic_type_first 0
-
-#define ompt_lock_hint_unknown (~0)
+#define ompt_mutex_kind_first         0
+#define ompt_mutex_hint_unknown       (~0)
 \end{verbatim}
 \clearpage
 
@@ -1874,7 +1866,15 @@ typedef struct ompt_frame_s {
 This section describes type signatures for all  callbacks that a tool may register to receive from an OpenMP runtime. Section~\ref{sec:events} describes OpenMP runtime events and registration of
 callback functions with these type signatures.
 
+The function signature  \verb|ompt_callback_t| defined immediately below is used by the tool callback registration interface as a placeholder for arbitrary callbacks,
+ regardless of a callback's actual type signature. This approach avoids the need for a separate registration routine for each unique callback signature. 
+
 \begin{verbatim}
+/* placeholder signature  */	
+typedef void (*ompt_callback_t) (    
+  void
+);
+
 /* initialization */
 typedef void (*ompt_interface_fn_t) (
   void
@@ -1885,209 +1885,205 @@ typedef ompt_interface_fn_t (*ompt_function_lookup_t) (
 );
 
 /* threads */	
-typedef void (*ompt_thread_callback_t) ( /* for thread              */	   
-  ompt_thread_id_t thread_id        /* ID of thread                 */
-);
-
-typedef void (*ompt_thread_callback_t) ( /* for thread         */
+typedef void (*ompt_thread_begin_callback_t) (
   ompt_thread_type_t thread_type,   /* type of thread               */	   
   ompt_thread_id_t thread_id        /* ID of thread                 */
 );
-
-typedef void (*ompt_scoped_sync_region_callback_t) ( 
-  ompt_sync_region_kind_t kind,   
-  ompt_scope_endpoint_t endpoint,    /* begin or end                 */ 
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id,          /* ID of task                   */
-  const void *codeptr_ra            /* return address of api call   */
+					   
+typedef void (*ompt_thread_end_callback_t) (
+  ompt_thread_id_t thread_id        /* ID of thread                 */
 );
 
-typedef void (*ompt_mutex_release_callback_t) ( 
-  ompt_mutex_kind_t kind,       
-  ompt_wait_id_t wait_id,
-  const void *codeptr_ra            /* return address of api call   */       
+/* idle */					    						    
+typedef void (*ompt_idle_callback_t) ( 
+  ompt_scope_endpoint_t endpoint    /* begin or end                 */
 );
 
-typedef void (*ompt_scoped_mutex_acquire_callback_t) ( 
-  ompt_mutex_kind_t kind,
-  uint32_t hint,
-  uint32_t impl,  
-  ompt_wait_id_t wait_id,
-  const void *codeptr_ra            /* return address of api call   */          
-);
-
-typedef void (*ompt_scoped_mutex_acquired_callback_t) ( 
-  ompt_mutex_kind_t kind,   
-  ompt_wait_id_t wait_id,
-  const void *codeptr_ra            /* return address of api call   */          
-);
-
-typedef void (*ompt_scoped_nested_lock_callback_t) ( 
-  ompt_scope_endpoint_t endpoint,    
-  ompt_wait_id_t wait_id,
-  const void *codeptr_ra            /* return address of api call   */          
-);
-
-typedef void (*ompt_scoped_master_callback_t) ( 
-  ompt_scope_endpoint_t endpoint,    /* begin or end                 */ 			   
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id,          /* ID of task                   */
-  const void *codeptr_ra            /* return address of api call   */
-);
-								    
-typedef void (*ompt_scoped_worksharing_callback_t) (
-  ompt_worksharing_type_t wstype,
-  ompt_scope_endpoint_t endpoint,    /* begin or end                 */ 		   
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id,          /* ID of task                   */
-  const void *codeptr_ra            /* return address of api call   */
-);
-
-typedef void (*ompt_worksharing_end_callback_t) (
-  ompt_worksharing_type_t wstype,			   
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id,          /* ID of task                   */
-);								    
-								    							   	    
-typedef void (*ompt_parallel_begin_callback_t) ( /* for new parallel  */
+/* parallel regions */								    							   	    
+typedef void (*ompt_parallel_begin_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   const ompt_frame_t *parent_frame, /* frame data of parent task    */
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   uint32_t requested_team_size,     /* requested number of threads  */
-  ompt_invoker_t invoker,            /* who invokes master task?     */
-  const void *codeptr_ra
+  ompt_invoker_t invoker,           /* who invokes master task?     */
+  const void *codeptr_ra            /* return address of api call   */ 
 );
 
 typedef void (*ompt_parallel_end_callback_t) (
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t task_id,           /* ID of task                   */
-  ompt_invoker_t invoker            /* who invokes master task?     */
-);
-			   		
-typedef void (*ompt_scoped_implicit_callback_t) ( 
-  ompt_scope_endpoint_t endpoint,    /* begin or end                 */
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id          /* ID of task                   */
-);
-					    						    
-typedef void (*ompt_scoped_callback_t) ( 
-  ompt_scope_endpoint_t endpoint    /* begin or end                 */
+  ompt_invoker_t invoker,           /* who invokes master task?     */
+  const void *codeptr_ra            /* return address of api call   */ 
 );
 
-typedef void (*ompt_task_create_callback_t) ( /* for new tasks       */
-  ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  const ompt_frame_t *parent_frame, /* frame data for parent task   */
-  ompt_task_id_t new_task_id,       /* ID of created task           */
-  ompt_task_type_t type,                
-  const void *codeptr_ra           
-);
-  
-typedef void (*ompt_target_task_begin_callback_t) (
-  ompt_task_id_t parent_task_id,    /* ID of parent task            */
-  const ompt_frame_t *parent_frame, /* frame data for parent task   */
-  ompt_task_id_t host_task_id,      /* ID of target task on host    */
-  int device_id,                    /* ID of the device             */
-  const void *target_task_code,     /* ptr to target code           */
-  ompt_target_task_type_t task_type /* the type of the target task  */
+/* task regions */
+typedef void (*ompt_task_create_callback_t) ( 
+  ompt_task_id_t parent_task_id,     /* ID of parent task           */
+  const ompt_frame_t *parent_frame,  /* frame data for parent task  */
+  ompt_task_id_t new_task_id,        /* ID of created task          */
+  ompt_task_type_t type,             /* type of task being created  */ 
+   const void *codeptr_ra            /* return address of api call  */ 
 );
 
-typedef void (*ompt_target_task_end_callback_t) ( 	   
-  ompt_task_id_t host_task_id       /* ID of target task on host    */
-);
-
-/* lock initialization and destruction */
-typedef void (*ompt_lock_init_callback_t) (
-  _Bool is_nest_lock,   /* nested lock or not */
-  ompt_wait_id_t wait_id,          /* wait ID                      */
-  uint32_t hint,           /* OMP lock hint                */
-  ompt_lock_impl_t kind,            /* implementation               */
-  const void *codeptr_ra            /* return address of api call   */
-);
-
-typedef void (*ompt_lock_destroy_callback_t) (
-  _Bool is_nest_lock,             /* nested lock or not */
-  ompt_wait_id_t wait_id,          /* wait ID                      */
-  const void *codeptr_ra            /* return address of api call   */
-);
-
-
-/* target device */
-typedef void (*ompt_scoped_target_callback_t) ( 
-  ompt_target_id_t target_id, 	
-  int device_id,                    /* ID of the device             */
-  ompt_task_id_t task_id,         
-  ompt_scope_endpoint_t endpoint,    /* begin or end                 */ 
-  const void *codeptr_ra            /* return address of api call   */
-);
-
-typedef void (*ompt_target_data_callback_t) (
-  ompt_target_id_t target_id, 
-  ompt_target_id_t host_op_id,	
-  ompt_target_optype_t optype,
-  void *host_addr,                 /* host  address of the data    */
-  void *device_addr,                /* device address of the data   */ 
-  size_t bytes                     /* number of bytes mapped       */		
-);
-
-typedef void (*ompt_target_submit_callback_t) (
-  ompt_target_id_t target_id, 
-  ompt_target_id_t host_op_id	
-);
-
-typedef void (*ompt_target_data_map_callback_t) (
-  ompt_target_id_t target_id, 
-  uint32_t nitems,                  /* # of items to be mapped      */
-  void **host_addr,                /* host  address of the data    */
-  void **device_addr,               /* device address of the data   */ 
-  size_t *bytes,                    /* number of bytes mapped       */
-  uint32_t *mapping_flags         /* sync/async, to/from          */
-);
-
-/* task dependences */
 typedef void (*ompt_task_dependences_callback_t) (                                   
   ompt_task_id_t task_id,            /* ID of task with dependences */
   const ompt_task_dependence_t *deps,/* vector of task dependences  */
   int ndeps                          /* number of dependences       */
 );
 
-typedef void (*ompt_task_pair_callback_t) (
-  ompt_task_id_t first_task_id,
-  ompt_task_id_t second_task_id
+typedef void (*ompt_task_dependence_callback_t) (
+  ompt_task_id_t src_task_id,        /* ID of dependence source     */
+  ompt_task_id_t sink_task_id        /* ID of dependence sink       */
 );
 
 typedef void (*ompt_task_schedule_callback_t) (
-  ompt_task_id_t prior_task_id,
-  _Bool prior_completed,
-  ompt_task_id_t next_task_id
+  ompt_task_id_t prior_task_id,      /* ID of descheduled task      */
+  _Bool prior_completed,             /* true if prior task completed*/
+  ompt_task_id_t next_task_id        /* ID of scheduled task        */
 );
-        
-/* program */						   
-typedef void (*ompt_control_callback_t) ( /* for control            */	   
-  uint64_t command,                 /* command of control call      */
-  uint64_t modifier                 /* modifier of control call     */
+
+typedef void (*ompt_scoped_implicit_callback_t) ( 
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t  task_id           /* ID of task                   */
 );
-  
-typedef void (*ompt_callback_t) (    /* for shutdown                 */
-  void
-); 
+
+/* task synchronization */
+typedef void (*ompt_scoped_sync_region_callback_t) ( 
+  ompt_sync_region_kind_t kind,     /* barrier, taskwait, taskgroup */
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t  task_id,          /* ID of task                   */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+/* mutual exclusion */
+typedef void (*ompt_lock_init_callback_t) (
+  _Bool is_nest_lock,               /* nested lock or not           */
+  ompt_wait_id_t wait_id,           /* wait ID                      */
+  uint32_t hint,                    /* OMP lock hint                */
+  ompt_lock_impl_t kind,            /* implementation               */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+
+
+
+
+typedef void (*ompt_lock_destroy_callback_t) (
+  _Bool is_nest_lock,               /* nested lock or not           */
+  ompt_wait_id_t wait_id,           /* wait ID                      */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+typedef void (*ompt_mutex_acquire_callback_t) ( 
+  ompt_mutex_kind_t kind,           /* some mutex or type of mutex  */
+  uint32_t hint,                    /* based on OMP lock hint       */
+  uint32_t impl,                    /* enumerate_mutex_kinds decodes*/
+  ompt_wait_id_t wait_id,           /* ID of mutex being awaited    */
+  const void *codeptr_ra            /* return address of api call   */          
+);
+
+typedef void (*ompt_mutex_acquired_callback_t) ( 
+  ompt_mutex_kind_t kind,           /* some mutex or type of mutex  */ 
+  ompt_wait_id_t wait_id,           /* ID of mutex being awaited    */
+  const void *codeptr_ra            /* return address of api call   */          
+);
+
+typedef void (*ompt_scoped_nested_lock_callback_t) ( 
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 
+  ompt_wait_id_t wait_id,           /* ID of mutex being awaited    */
+  const void *codeptr_ra            /* return address of api call   */          
+);
+
+typedef void (*ompt_mutex_release_callback_t) ( 
+  ompt_mutex_kind_t kind,           /* some mutex or type of mutex  */
+  ompt_wait_id_t wait_id,           /* ID of mutex being awaited    */
+  const void *codeptr_ra            /* return address of api call   */       
+);
+
+/* master */
+typedef void (*ompt_scoped_master_callback_t) ( 
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 			   
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t  task_id,          /* ID of task                   */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+/* worksharing regions */								    
+typedef void (*ompt_scoped_worksharing_callback_t) (
+  ompt_worksharing_type_t wstype,	   /* loop, sections, single ...   */	
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 		   
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t  task_id,          /* ID of task                   */
+  const void *codeptr_ra            /* return address of api call   */
+);
+typedef void (*ompt_worksharing_end_callback_t) (
+  ompt_worksharing_type_t wstype,	   /* loop, sections, single ...   */		   
+  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
+  ompt_task_id_t  task_id,          /* ID of task                   */
+  const void *codeptr_ra            /* return address of api call   */ 
+);								    
+
+/* target regions */
+typedef void (*ompt_scoped_target_callback_t) ( 
+  int device_id,                    /* ID of the device             */
+  ompt_task_id_t task_id,           /* ID of encountering task      */     
+  ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 
+  ompt_target_id_t target_id, 	     /* ID of the target region      */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+typedef void (*ompt_target_data_callback_t) (
+  ompt_target_id_t target_id, 	     /* ID of the target region      */
+  ompt_target_id_t host_op_id,	      /* host side ID for operation   */
+  ompt_target_optype_t optype,      /* type of operation            */
+  void *host_addr,                  /* host address of the data     */
+  void *device_addr,                /* device address of the data   */ 
+  size_t bytes                      /* number of bytes mapped       */		
+);
+
+typedef void (*ompt_target_data_map_callback_t) (
+  ompt_target_id_t target_id, 
+  uint32_t nitems,                  /* # of items to be mapped      */
+  void **host_addr,                 /* host address of the data     */
+  void **device_addr,               /* device address of the data   */ 
+  size_t *bytes,                    /* number of bytes mapped       */
+  uint32_t *mapping_flags           /* sync/async, to/from          */
+);
+
+typedef void (*ompt_target_submit_callback_t) (
+  ompt_target_id_t target_id, 	     /* ID of the target region      */
+  ompt_target_id_t host_op_id,	      /* host side ID  for operation  */	
+);
 
 /* target trace buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
-  ompt_target_buffer_t** buffer,    /* pointer to host memory to store target records */
-  size_t *bytes                     /* buffer size in bytes */
+  ompt_target_buffer_t** buffer,    /* host buffer for trace        */
+  size_t *bytes                     /* buffer size in bytes         */
 );
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
-  int device_id,                     /* target device                                 */
-  const ompt_target_buffer_t *buffer,/* pointer to buffer with target event records   */
-  size_t bytes,                      /* number of valid bytes in the buffer           */
-  ompt_target_buffer_cursor_t begin, /* position of first record                      */
-  ompt_target_buffer_cursor_t end    /* position after last record                    */ 
+  int device_id,                     /* target device               */
+  const ompt_target_buffer_t *buffer,/* target trace records        */
+  size_t bytes,                      /* valid bytes in the buffer   */
+  ompt_target_buffer_cursor_t begin, /* position of first record    */
+  ompt_target_buffer_cursor_t end    /* position after last record  */ 
 );
+
+/* application tool control */						   
+typedef void (*ompt_control_callback_t) (
+  uint64_t command,                 /* command of control call      */
+  uint64_t modifier,                /* modifier of control call     */
+  const void *codeptr_ra            /* return address of api call   */
+);
+
+/* flush */
+typedef void (*ompt_flush_callback_t) (  ompt_thread_id_t thread_id,       /* ID of thread                 */
+  const void *codeptr_ra            /* return address of api call   */);
+
 \end{verbatim}
 
-\paragraph{Placeholder callback signature.} The type \verb|ompt_callback_t| is also a placeholder signature used only by the tool callback registration interface. 
-Only one callback registration function is defined and it expects that the callback supplied will be cast into type \verb|ompt_callback_t|, regardless of its actual type signature. This approach avoids the need for a separate registration routine for each unique tool callback signature. 
 
 \clearpage
 \subsection{OMPT Inquiry and Control API}
@@ -2096,57 +2092,57 @@ The functions in this section are not global function symbols in an OpenMP runti
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{verbatim}
-/* callback management */
-OMPT_API int ompt_set_callback( /* register a callback for an event                      */
+/* set and get callback functions */
+OMPT_API int ompt_set_callback( 
   ompt_event_t event,           /* the event of interest                                 */
   ompt_callback_t callback      /* function pointer for the callback                     */
 );
 
-OMPT_API int ompt_get_callback( /* return the current callback for an event (if any)     */
+OMPT_API int ompt_get_callback(
   ompt_event_t event,           /* the event of interest                                 */
   ompt_callback_t *callback     /* pointer to receive the return value                   */
 );
 
-/* state inquiry */
-OMPT_API int ompt_enumerate_state(  
+/* enumerate all states used by a runtime */
+OMPT_API int ompt_enumerate_states(  
   omp_state_t current_state,   
   omp_state_t *next_state,     
   const char **next_state_name   
 );
 
-/* enumerate kinds of mutex implementations */
-OMPT_API int ompt_enumerate_sync_kinds(  
+/* enumerate all kinds of mutex implementations */
+OMPT_API int ompt_enumerate_mutex_kinds(  
   uint32_t current_kind, 
   uint32_t *next_kind,   
   const char **next_kind_name    
 );
 
 /* thread inquiry */
-OMPT_API ompt_thread_id_t ompt_get_thread_id( /* identify the current thread             */
-  void
-);
+OMPT_API ompt_thread_id_t ompt_get_thread_id(void);
 
-OMPT_API omp_state_t ompt_get_state( /* get the state for a thread                      */
-  ompt_wait_id_t *wait_id        /* for wait states: identify what awaited               */
+/* state inquiry */
+OMPT_API omp_state_t ompt_get_state( 
+  ompt_wait_id_t *wait_id        /* for wait states: identify what is awaited            */
 );
 
 /* parallel region inquiry */
-OMPT_API ompt_parallel_id_t ompt_get_parallel_id( /* identify a parallel region          */
-  int ancestor_level             /*  how many levels removed from the current region     */
+OMPT_API _Bool ompt_get_parallel_info(
+  int ancestor_level,            /* how many levels outside the current region           */
+  ompt_parallel_id_t *parallel_id,  /* ID of the region at the specified level */
+  int *team_size                /* size of the team for the region at the specified level */
 );
 
-OMPT_API int ompt_get_parallel_team_size( /* query # threads in a parallel region        */
-  int ancestor_level             /*  how many levels removed from the current region     */
-);
-
-/* task inquiry */
+/* task region inquiry */
 OMPT_API _Bool ompt_get_task_info(
-  int ancestor_level,            /* how many levels removed from the current task        */
+  int ancestor_level,            /* how many levels outside the current region           */
   ompt_task_type_t *type,        /* return the type of the task                          */
   ompt_task_id_t *task_id,       /* return the ID of the task                            */
   ompt_frame_t **task_frame,     /* return the task_frame of the task                    */
   ompt_parallel_id_t *par_id     /* return the ID of the parallel region                 */
 );
+
+/* target region inquiry */
+OMPT_API ompt_target_id_t ompt_get_target_id(void);
 
 /* target device inquiry */
 OMPT_API int ompt_target_get_device_id(         /* return active target device ID        */
@@ -2165,17 +2161,17 @@ OMPT_TARG_API double ompt_target_translate_time(
 /* target tracing control */
 OMPT_TARG_API int ompt_target_set_trace_ompt(
   ompt_target_device_t *device,  /* target device handle                                 */
-  _Bool enable,              /* enable or disable                                    */
+  _Bool enable,                  /* enable or disable                                    */
   ompt_record_type_t rtype       /* a record type                                        */
 );
 
 OMPT_TARG_API int ompt_target_set_trace_native(
   ompt_target_device_t *device,  /* target device handle                                 */
-  _Bool enable,              /* enable or disable                                    */
+  _Bool enable,                  /* enable or disable                                    */
   uint32_t  flags                /* event classes to monitor                             */
 );
 
-OMPT_TARG_API int ompt_target_start_trace (
+OMPT_TARG_API int ompt_target_start_trace(
   ompt_target_device_t *device,  /* target device handle                                 */
   ompt_target_buffer_request_callback_t request,  /* fn pointer to request trace buffer  */
   ompt_target_buffer_complete_callback_t complete /* fn pointer to return trace buffer   */
@@ -2209,7 +2205,8 @@ OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
    
 OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
-  ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
+  ompt_target_buffer_cursor_t current, /* cursor identifying position in buffer          */
+  ompt_target_id_t *host_op_id         /* host side ID  for operation                    */
 );
   
 OMPT_TARG_API ompt_record_native_abstract_t *
@@ -2225,13 +2222,13 @@ ompt_target_buffer_get_record_native_abstract(
 \begin{verbatim}
 /* OMPT record type */
 typedef enum ompt_record_type_e {
-  ompt_record_ompt = 1,
-  ompt_record_native = 2,
-  ompt_record_invalid = 4
+  ompt_record_ompt               = 1,
+  ompt_record_native             = 2,
+  ompt_record_invalid            = 4
 } ompt_record_type_t; 
 
 typedef enum ompt_record_native_class_e {
-  ompt_record_native_class_info = 1,
+  ompt_record_native_class_info  = 1,
   ompt_record_native_class_event = 2
 } ompt_record_native_class_t;
 
@@ -2241,7 +2238,6 @@ typedef struct ompt_record_native_abstract_s {
   const char *type;
   ompt_target_time_t start_time;
   ompt_target_time_t end_time;
-  ompt_target_activity_id_t dev_task_id;
   uint64_t hwid;
 } ompt_record_native_abstract_t;
 
@@ -2311,7 +2307,7 @@ typedef struct ompt_record_target_data_begin_s {
 typedef struct ompt_record_data_map_begin_s {
   ompt_task_id_t task_id;           /* ID of encountering task      */
   int device_id;                    /* ID of the device             */
-  void *host_addr;                  /* host  address of the data    */
+  void *host_addr;                  /* host address of the data     */
   void *device_addr;                /* device address of the data   */ 
   size_t bytes;                     /* number of bytes mapped       */
   uint32_t mapping_flags;           /* sync/async, to/from          */
@@ -2321,7 +2317,7 @@ typedef struct ompt_record_data_map_begin_s {
 typedef struct ompt_record_data_map_done_s {
   ompt_task_id_t task_id;           /* ID of current task           */
   int device_id;                    /* ID of the device             */
-  void *host_addr;                  /* host  address of the data    */
+  void *host_addr;                  /* host address of the data     */
   void *device_addr;                /* device address of the data   */ 
   size_t bytes;                     /* number of bytes mapped       */
   uint32_t mapping_flags;           /* sync/async, to/from          */
@@ -2338,7 +2334,7 @@ typedef struct ompt_record_ompt_s {
   ompt_event_t type;                /* event type                       */
   ompt_target_time_t time;          /* time record created              */
   ompt_thread_id_t thread_id;       /* thread ID for this record        */
-  ompt_target_activity_id_t dev_task_id;  /* link to host context       */
+  ompt_target_id_t target_id;  /* link to host context       */
   union
   {
     ompt_record_thread_t thread;                 /* for thread          */
@@ -2414,3 +2410,17 @@ Below the stack for each thread in Figure~\ref{fig:frame}, the figure shows the 
 }
 
 \end{document}
+
+
+typedef void (*ompt_target_task_begin_callback_t) (
+  ompt_task_id_t parent_task_id,    /* ID of parent task            */
+  const ompt_frame_t *parent_frame, /* frame data for parent task   */
+  ompt_task_id_t host_task_id,      /* ID of target task on host    */
+  int device_id,                    /* ID of the device             */
+  const void *target_task_code,     /* ptr to target code           */
+  ompt_target_task_type_t task_type /* the type of the target task  */
+);
+
+typedef void (*ompt_target_task_end_callback_t) ( 	   
+  ompt_task_id_t host_task_id       /* ID of target task on host    */
+);
