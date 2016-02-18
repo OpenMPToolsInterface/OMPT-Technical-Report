@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised February 16, 2016}
+\date{Revised February 18, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -112,7 +112,6 @@ Section~\ref{sec:data} describes the data structures used by the OMPT interface.
 Section~\ref{sec:inquiry} describes the runtime system inquiry operations supported by OMPT for the benefit of tools.
 Section~\ref{sec:enabling} describes the OMPT API operations for tool initialization.
 Section~\ref{sec:app-facing} describes the tool control interface available to applications.
-Section~\ref{sec:notes} concludes with a few notes about potential future enhancements.
 Appendix~\ref{appendix:ompt-types} provides a definition of the complete OMPT interface in C.
 Appendix~\ref{app:frame} illustrates the information that OMPT maintains about call stacks and the use of OMPT API routines to inspect it; this support enables tools to associate code executed in OpenMP parallel regions with  application-level calling contexts. 
 % Appendix~\ref{app:registration} outlines some considerations that impact the design of the interface for tool registration.
@@ -814,7 +813,7 @@ typedef uint64_t ompt_thread_id_t;
   on demand by invoking the  \verb|ompt_get_thread_id|   
   function (described in Section~\ref{sec:thread-inquiry}).
   Tools should not assume that \verb|ompt_thread_id_t| values are dense or small. 
-  The value 0 is reserved to indicate an invalid thread id.
+  The value \verb|ompt_thread_id_none| is reserved to indicate an invalid thread id.
 
 \subsection{Parallel Region Identifier}
   Each OpenMP parallel region has an associated identifier of type
@@ -1115,6 +1114,7 @@ Function \verb|ompt_get_task_info| returns a Boolean, which indicates whether th
 
 A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|.
 
+\begin{comment}
 \begin{table}
 \centering
 \begin{tabular}{|l|l|}
@@ -1128,13 +1128,14 @@ depth & meaning\\\hline
 \caption{Meaning of different  values for the {\tt depth} argument to {\tt ompt\_get\_task\_info}.}
 \label{tab:task-ancestor}
 \end{table}
+\end{comment}
 
 Using values inside  \verb|ompt_frame_t| objects returned by calls to  \verb|ompt_get_task_info|, a tool can analyze  frames in the call stack and identify ones that exist on behalf of the runtime system.\footnote{A frame on the call stack is said to exist on behalf of an OpenMP runtime if it is a frame for a runtime system routine, or if it belongs to a library function called by a runtime system routine, directly or indirectly.} 
 This capability enables a tool to map from an implementation-level view of the call stack back to a source-level view that is easier for application developers to understand. 
 Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| objects with multiple threads and nested parallelism.
 
 \subsection{Target Region Inquiry}
-\label{sec:task-region}
+\label{sec:target-region}
 
 Function \verb|ompt_get_target_id| provides the identifier for a thread's current target region, if any.
 \begin{quote}
@@ -1142,10 +1143,10 @@ Function \verb|ompt_get_target_id| provides the identifier for a thread's curren
 OMPT_API ompt_target_id_t ompt_get_target_id(void);
 \end{verbatim}
 \end{quote}
-This function returns the value 0 if the thread invoking it is outside a target region.  {\em This function is async signal safe.}
+This function returns the value \verb|ompt_target_id_none| if the thread invoking it is outside a target region.  {\em This function is async signal safe.}
 
 \subsection{Target Device Inquiry}
-\label{sec:target-region}
+\label{sec:target-device}
 Function \verb|ompt_get_num_devices| returns the number of visible devices:
 \begin{quote}
 \begin{verbatim}
@@ -1630,7 +1631,6 @@ Marty Itzkowitz, Oleg Mazurov, Nawal Copty, and Yuan Lin designed the Collector 
 
 We would also like to recognize other members of the OpenMP tools working group who contributed ideas and feedback that helped shape the design of  OMPT: Brian Bliss, Bronis de Supinski, Alex Grund, Kevin Huck, Marty Itzkowitz, Bernd Mohr, Harald Servat, and Michael Wong.
 
- \clearpage
  \bibliographystyle{abbrv}
  \bibliography{ompt-tr}
 
@@ -1826,7 +1826,6 @@ typedef enum ompt_invoker_e {
 } ompt_invoker_t;
 
 typedef enum ompt_target_map_flag_e {
-  // a three bit field 0..7 for map type to/from/tofrom/alloc/release/delete
   ompt_target_map_flag_to             = 1,
   ompt_target_map_flag_from           = 2,
   ompt_target_map_flag_alloc          = 4,
@@ -1854,7 +1853,11 @@ typedef struct ompt_frame_s {
 #define ompt_hwid_none                (-1)
 #define ompt_dev_task_none            (~0ULL)
 #define ompt_time_none                (~0ULL)
-#define ompt_parallel_id_none         0#define ompt_task_id_none             0#define ompt_target_id_none           0
+
+#define ompt_thread_id_none           0
+#define ompt_parallel_id_none         0
+#define ompt_task_id_none             0
+#define ompt_target_id_none           0
 
 #define ompt_mutex_kind_first         0
 #define ompt_mutex_hint_unknown       (~0)
@@ -2037,7 +2040,7 @@ typedef void (*ompt_scoped_target_callback_t) (
 typedef void (*ompt_target_data_callback_t) (
   ompt_target_id_t target_id, 	     /* ID of the target region      */
   ompt_target_id_t host_op_id,	      /* host side ID for operation   */
-  ompt_target_optype_t optype,      /* type of operation            */
+  ompt_target_data_op_t optype,     /* type of operation            */
   void *host_addr,                  /* host address of the data     */
   void *device_addr,                /* device address of the data   */ 
   size_t bytes                      /* number of bytes mapped       */		
@@ -2401,7 +2404,6 @@ Below the stack for each thread in Figure~\ref{fig:frame}, the figure shows the 
 \clearpage
 {\color{red}
 \section{Issues}
-
 \begin{itemize}
 \item distribute (fix all of the implications)
 \item teams?
