@@ -308,7 +308,7 @@ This flexibility may significantly simplify the maintenance of states associated
 
   The thread is waiting for a target region to complete.
   
-\item \verb|omp_state_wait_target_map| 
+\item \verb|omp_state_wait_target_data| 
 
   The thread is waiting for a target data mapping operation to complete. 
   A  compliant runtime implementation may report \verb|omp_state_wait_target| for target data constructs.
@@ -329,15 +329,6 @@ This flexibility may significantly simplify the maintenance of states associated
   This state is reserved for threads that are not user threads,
   initial threads, threads currently in an OpenMP team, or threads
   waiting to become part of an OpenMP team.
-
-\begin{comment}
-
-\item \verb|omp_state_first| 
-
-\sloppy
-  This state is a placeholder exclusively reserved for use by the OMPT runtime call \verb|ompt_enumerate_states| (see Section~\ref{ompt_enumerate_states}), which is used to enumerate all available runtime states. A thread will never be reported in this state.
-
-\end{comment}
 
 \end{description}
 
@@ -469,6 +460,7 @@ The callback argument \verb|type| may indicate either an explicit task or one of
 This callback has type signature \verb|ompt_scoped_target_callback_t|.
 The OpenMP runtime invokes this callback with argument \verb|endpoint=ompt_scope_begin| after a task encounters any target construct. 
 The OpenMP runtime invokes this callback with argument \verb|endpoint=ompt_scope_end| when the execution of this construct completes on the host. 
+The callback argument \verb|kind| indicates the kind of target construct.
 The callback argument \verb|task_id| indicates the encountering task.
 The callback argument \verb|device_id| indicates the device associated with the target  construct.
 The callback argument \verb|target_id| uniquely identifies a target construct instance. 
@@ -492,6 +484,7 @@ This callback has type signature \verb|ompt_target_submit_callback_t|.
 The OpenMP runtime invokes this callback prior to submitting a kernel for execution on a target device. 
 The callback argument \verb|target_id| indicates the instance of the target construct associated with this operation.
 The callback argument \verb|host_op_id| provides a unique host-side identifier that represents the activity on the device.
+The callback argument \verb|requested_num_teams|  \verb|granted_num_teams| indicate, respectively, the number of teams requested by the user and granted by the runtime.
 
 \end{description}
 
@@ -985,7 +978,7 @@ OMPT_API int ompt_enumerate_states(
 
 \noindent
 To begin enumerating the states that a runtime system supports,
-the value \verb|omp_state_first| should be supplied for \verb|current_state| in the call to \verb|ompt_enumerate_states| that begins the enumeration.
+the value \verb|omp_state_undefined| should be supplied for \verb|current_state| in the call to \verb|ompt_enumerate_states| that begins the enumeration.
 The argument \verb|next_state| is a pointer to an \verb|omp_state_t| that will be set to the code for the next state in the enumeration.
 The argument \verb|next_state_name| is a pointer to a location that will be filled in with a pointer to the name associated with \verb|next_state|. 
 Subsequent invocations of \verb|ompt_enumerate_states| should pass the code returned in \verb|next_state| by the prior call.
@@ -995,7 +988,7 @@ An example of how to enumerate the states supported by an OpenMP runtime is show
 
 \begin{quote}
 \begin{verbatim}
-omp_state_t state = omp_state_first;
+omp_state_t state = omp_state_undefined;
 const char *state_name;
 while (ompt_enumerate_states(state, &state, &state_name)) {
   // tool notes that the runtime supports omp_state_t "state" 
@@ -1025,7 +1018,7 @@ OMPT_API int ompt_enumerate_mutex_kinds(
 \noindent
 \sloppy
 To begin enumerating the mutex implementations that a runtime  employs, one should supply 
- \verb|ompt_mutex_kind_first| as the value for \verb|current_kind| in the first call to \verb|ompt_enumerate_mutex_kinds|.
+ \verb|ompt_mutex_kind_unknown| as the value for \verb|current_kind| in the first call to \verb|ompt_enumerate_mutex_kinds|.
 The argument \verb|next_kind| is a pointer to an integer that will be set to the code for the next implementation in the enumeration.
 The argument \verb|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the mutex implementation associated with \verb|next_kind|. 
 Each subsequent invocation of \verb|ompt_enumerate_mutex_kinds| should pass the code returned in \verb|next_kind| by the prior call.
@@ -1036,7 +1029,7 @@ An example of how to enumerate the types of mutex implementations supported by a
 
 \begin{quote}
 \begin{verbatim}
-uint32_t kind = ompt_mutex_kind_first;
+uint32_t kind = ompt_mutex_kind_unknown;
 const char *kind_name;
 while (ompt_enumerate_mutex_kinds(kind, &kind, &kind_name)) {
   // tool notes that the runtime "kind" is associated with "kind_name" 
@@ -1088,7 +1081,7 @@ Ancestor level 0 refers to the current parallel region;
 information about enclosing parallel regions may be obtained using higher ancestor levels. 
 Function \verb|ompt_get_parallel_info| returns a Boolean, which indicates whether there is a parallel region at the specified ancestor level.
 The function results \verb|*parallel_id| and \verb|*team_size| indicate properties of the parallel region at the specified ancestor level.
-If there is no enclosing parallel region at the specified ancestry level, the values of \verb|*parallel_id| and \verb|*team_size| are undefined.
+If there is no enclosing parallel region at the specified ancestry level, the value of \verb|*parallel_id| is \verb|parallel_id_none| and the value of \verb|*team_size| is undefined.
 {\em This function is async signal safe.}
  
 \subsection{Task Region Inquiry}
@@ -1750,7 +1743,6 @@ typedef uint64_t ompt_parallel_id_t;        /* uniquely identifies a parallel re
 typedef uint64_t ompt_task_id_t;            /* uniquely identifies a task region             */
 typedef uint64_t ompt_target_id_t;          /* uniquely identifies a target region           */
 typedef uint64_t ompt_wait_id_t;            /* identifies what a thread is awaiting          */
-typedef uint64_t ompt_target_activity_id_t; /* uniquely identifies an activity on a device   */
 typedef void ompt_target_device_t;          /* opaque object representing a target device    */
 typedef uint64_t ompt_target_time_t;        /* raw time value on a device                    */
 typedef void ompt_target_buffer_t;          /* opaque handle for a target buffer             */ 
@@ -1813,12 +1805,16 @@ typedef enum  ompt_task_type_e {
   ompt_task_initial                   = 1,
   ompt_task_implicit                  = 2,
   ompt_task_explicit                  = 3,
-  ompt_task_target                    = 4,
-  ompt_task_target_enter_data         = 5,
-  ompt_task_target_exit_data          = 6,
-  ompt_task_target_update             = 7,
-  ompt_task_degenerate                = 8
+  ompt_task_target                    = 4
+  ompt_task_degenerate                = 5
 } ompt_task_type_t;
+
+typedef enum ompt_target_type_e {
+  ompt_task_target                    = 1,
+  ompt_task_target_enter_data         = 2,
+  ompt_task_target_exit_data          = 3,
+  ompt_task_target_update             = 4
+} ompt_target_type_t;
 
 typedef enum ompt_invoker_e {
   ompt_invoker_program                = 1,         /* program invokes master task  */
@@ -1859,8 +1855,7 @@ typedef struct ompt_frame_s {
 #define ompt_task_id_none             0
 #define ompt_target_id_none           0
 
-#define ompt_mutex_kind_first         0
-#define ompt_mutex_hint_unknown       (~0)
+#define ompt_mutex_kind_unknown       0
 \end{verbatim}
 \clearpage
 
@@ -1965,7 +1960,7 @@ typedef void (*ompt_lock_init_callback_t) (
   _Bool is_nest_lock,               /* nested lock or not           */
   ompt_wait_id_t wait_id,           /* wait ID                      */
   uint32_t hint,                    /* OMP lock hint                */
-  ompt_lock_impl_t kind,            /* implementation               */
+  uint32_t kind,                    /* implementation               */
   const void *codeptr_ra            /* return address of api call   */
 );
 
@@ -2020,17 +2015,12 @@ typedef void (*ompt_scoped_worksharing_callback_t) (
   ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
   ompt_task_id_t  task_id,          /* ID of task                   */
   const void *codeptr_ra            /* return address of api call   */
-);
-typedef void (*ompt_worksharing_end_callback_t) (
-  ompt_worksharing_type_t wstype,	   /* loop, sections, single ...   */		   
-  ompt_parallel_id_t parallel_id,   /* ID of parallel region        */
-  ompt_task_id_t  task_id,          /* ID of task                   */
-  const void *codeptr_ra            /* return address of api call   */ 
-);								    
+);							    
 
 /* target regions */
 typedef void (*ompt_scoped_target_callback_t) ( 
   int device_id,                    /* ID of the device             */
+  ompt_target_type_t kind,          /* target, target data,...      */
   ompt_task_id_t task_id,           /* ID of encountering task      */     
   ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 
   ompt_target_id_t target_id, 	     /* ID of the target region      */
@@ -2058,6 +2048,8 @@ typedef void (*ompt_target_data_map_callback_t) (
 typedef void (*ompt_target_submit_callback_t) (
   ompt_target_id_t target_id, 	     /* ID of the target region      */
   ompt_target_id_t host_op_id,	      /* host side ID  for operation  */	
+  uint32_t requested_num_teams,
+  uint32_t granted_num_teams
 );
 
 /* target trace buffer management routines */
@@ -2082,8 +2074,10 @@ typedef void (*ompt_control_callback_t) (
 );
 
 /* flush */
-typedef void (*ompt_flush_callback_t) (  ompt_thread_id_t thread_id,       /* ID of thread                 */
-  const void *codeptr_ra            /* return address of api call   */);
+typedef void (*ompt_flush_callback_t) (
+  ompt_thread_id_t thread_id,       /* ID of thread                 */
+  const void *codeptr_ra            /* return address of api call   */
+);
 
 \end{verbatim}
 
