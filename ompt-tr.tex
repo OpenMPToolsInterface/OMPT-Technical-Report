@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised February 18, 2016}
+\date{Revised February 26, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -1152,7 +1152,7 @@ Function \verb|ompt_get_device_info|, whose type signature is shown below, is us
 \begin{quote}
 \begin{verbatim}
 OMPT_API int ompt_target_get_device_info(
-  int device_id, 
+  int32_t device_id, 
   const char **type, 
   ompt_target_device_t **device,
   ompt_function_lookup_t *lookup,
@@ -1279,7 +1279,7 @@ The \emph{buffer request} callback has the following type signature:
 \begin{quote}
 \begin{verbatim}
 typedef void (*ompt_target_buffer_request_callback_t) (
-  int device_id,
+  int32_t device_id,
   ompt_target_buffer_t **buffer,
   size_t *bytes
 );
@@ -1293,7 +1293,7 @@ The \emph{buffer complete} callback has the following type signature:
 \begin{quote}
 \begin{verbatim}
 typedef void (*ompt_target_buffer_complete_callback_t) (
-  int device_id, 
+  int32_t device_id, 
   const ompt_target_buffer_t *buffer,
   size_t bytes,
   ompt_target_buffer_cursor_t begin,
@@ -1751,7 +1751,8 @@ typedef uint64_t ompt_target_buffer_cursor_t; /* opaque handle for position in t
 typedef enum ompt_thread_type_e {
   ompt_thread_initial                 = 1,
   ompt_thread_worker                  = 2,
-  ompt_thread_other                   = 3
+  ompt_thread_other                   = 3,
+  ompt_thread_unknown                 = 4
 } ompt_thread_type_t;
 
 typedef enum ompt_scope_endpoint_e {
@@ -2019,7 +2020,7 @@ typedef void (*ompt_scoped_worksharing_callback_t) (
 
 /* target regions */
 typedef void (*ompt_scoped_target_callback_t) ( 
-  int device_id,                    /* ID of the device             */
+  int32_t device_id,                    /* ID of the device             */
   ompt_target_type_t kind,          /* target, target data,...      */
   ompt_task_id_t task_id,           /* ID of encountering task      */     
   ompt_scope_endpoint_t endpoint,   /* begin or end                 */ 
@@ -2059,7 +2060,7 @@ typedef void (*ompt_target_buffer_request_callback_t) (
 );
   
 typedef void (*ompt_target_buffer_complete_callback_t) (
-  int device_id,                     /* target device               */
+  int32_t device_id,                 /* target device               */
   const ompt_target_buffer_t *buffer,/* target trace records        */
   size_t bytes,                      /* valid bytes in the buffer   */
   ompt_target_buffer_cursor_t begin, /* position of first record    */
@@ -2291,19 +2292,19 @@ typedef struct ompt_record_target_task_begin_s {
   ompt_task_id_t parent_task_id;    /* ID of parent task            */
   ompt_frame_t *parent_task_frame;  /* frame data for parent task   */
   ompt_task_id_t target_task_id;    /* ID of target task            */
-  int device_id;                    /* ID of the device             */
+  int32_t device_id;                /* ID of the device             */
   void *target_task_code;           /* pointer to target task code  */
 } ompt_record_target_task_begin_t;
 
 typedef struct ompt_record_target_data_begin_s {
   ompt_task_id_t task_id;           /* ID of encountering task      */
-  int device_id;                    /* ID of the device             */
+  int32_t device_id;                /* ID of the device             */
   void *codeptr_ra;                 /* return address of api call   */
 } ompt_record_target_data_begin_t;
  
 typedef struct ompt_record_data_map_begin_s {
   ompt_task_id_t task_id;           /* ID of encountering task      */
-  int device_id;                    /* ID of the device             */
+  int32_t device_id;                /* ID of the device             */
   void *host_addr;                  /* host address of the data     */
   void *device_addr;                /* device address of the data   */ 
   size_t bytes;                     /* number of bytes mapped       */
@@ -2313,7 +2314,7 @@ typedef struct ompt_record_data_map_begin_s {
 
 typedef struct ompt_record_data_map_done_s {
   ompt_task_id_t task_id;           /* ID of current task           */
-  int device_id;                    /* ID of the device             */
+  int32_t device_id;                /* ID of the device             */
   void *host_addr;                  /* host address of the data     */
   void *device_addr;                /* device address of the data   */ 
   size_t bytes;                     /* number of bytes mapped       */
@@ -2412,7 +2413,7 @@ typedef void (*ompt_target_task_begin_callback_t) (
   ompt_task_id_t parent_task_id,    /* ID of parent task            */
   const ompt_frame_t *parent_frame, /* frame data for parent task   */
   ompt_task_id_t host_task_id,      /* ID of target task on host    */
-  int device_id,                    /* ID of the device             */
+  int32_t device_id;                /* ID of the device             */
   const void *target_task_code,     /* ptr to target code           */
   ompt_target_task_type_t task_type /* the type of the target task  */
 );
