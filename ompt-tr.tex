@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised February 26, 2016}
+\date{Revised March 9, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -349,7 +349,7 @@ The type signature for an event's callback is noted with the event definition.  
 
 There are two classes of events: mandatory events and optional events.
 Mandatory events must be implemented in any compliant OpenMP runtime implementation. 
-Optional events are grouped in sets of related events. Except for begin/end pairs as noted, support for any particular optional event can be included or omitted at the 
+Optional events are grouped in sets of related events. Support for any particular optional event can be included or omitted at the 
 discretion of a runtime system implementer. 
 
 
@@ -868,6 +868,7 @@ typedef uint64_t ompt_wait_id_t;
 \end{quote}
 \end{comment}
 A thread's wait identifier can be retrieved on demand by invoking the \verb|ompt_get_state| function (described in Section~\ref{sec:thread-inquiry}).
+Tools should not assume that \verb|ompt_wait_id_t| values are dense.
 When a thread is not in a wait state, a thread's wait identifier has an undefined value.
  
 \subsection{Structure to Support Classification of Stack Frames}
@@ -1081,7 +1082,7 @@ Ancestor level 0 refers to the current parallel region;
 information about enclosing parallel regions may be obtained using higher ancestor levels. 
 Function \verb|ompt_get_parallel_info| returns a Boolean, which indicates whether there is a parallel region at the specified ancestor level.
 The function results \verb|*parallel_id| and \verb|*team_size| indicate properties of the parallel region at the specified ancestor level.
-If there is no enclosing parallel region at the specified ancestry level, the value of \verb|*parallel_id| is \verb|parallel_id_none| and the value of \verb|*team_size| is undefined.
+If there is no enclosing parallel region at the specified ancestry level, the value of \verb|*parallel_id| is \verb|ompt_parallel_id_none| and the value of \verb|*team_size| is undefined.
 {\em This function is async signal safe.}
  
 \subsection{Task Region Inquiry}
