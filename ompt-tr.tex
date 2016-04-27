@@ -2393,19 +2393,13 @@ typedef struct ompt_record_target_data_s {
   void *host_addr;                   /* host address of the data    */
   void *device_addr;                 /* device address of the data  */ 
   size_t bytes;                      /* number of bytes mapped      */
+  ompt_target_time_t end_time;       /* end time                    */
 } ompt_record_target_data_t;
-
-typedef struct ompt_record_target_data_map_s {
-  void *host_addr;                   /* host address of the data    */
-  void *device_addr;                 /* device address of the data  */ 
-  size_t bytes;                      /* number of bytes mapped      */
-  uint32_t mapping_flags;            /* sync/async, to/from         */
-} ompt_record_target_data_map_t;
 
 typedef struct ompt_record_target_kernel_s {
   ompt_target_id_t host_op_id;       /* host side ID for operation  */
-  uint32_t requested_num_teams;      /* number of teams requested   */
   uint32_t granted_num_teams;        /* number of teams granted     */
+  ompt_target_time_t end_time;       /* end time                    */
 } ompt_record_target_kernel_t;
 
 typedef struct ompt_record_master_s {
