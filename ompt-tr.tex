@@ -2293,10 +2293,6 @@ typedef struct ompt_record_thread_begin_s {
   ompt_thread_type_t thread_type;    /* type of thread              */
 } ompt_record_thread_begin_t;
 
-typedef struct ompt_record_wait_id_s {
-  ompt_wait_id_t wait_id;            /* wait ID                     */
-} ompt_record_wait_id_t;
-
 typedef struct ompt_record_idle_s {
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
 } ompt_record_idle_t;
@@ -2345,27 +2341,27 @@ typedef struct ompt_record_scoped_implicit_s {
   ompt_task_id_t task_id;            /* ID of task                  */
 } ompt_record_scoped_implicit_t;
 
-typedef struct ompt_record_scoped_sync_s {
+typedef struct ompt_record_scoped_sync_region_s {
   ompt_sync_region_kind_t kind;      /* barrier, taskwait, taskgroup*/
   ompt_scope_endpoint_t endpoint;    /* begin or end                */ 
   ompt_parallel_id_t parallel_id;    /* ID of parallel region       */
   ompt_task_id_t  task_id;           /* ID of task                  */
   const void *codeptr_ra;            /* return address of api call  */
-} ompt_record_scoped_sync_t;
+} ompt_record_scoped_sync_region_t;
 
 typedef struct ompt_record_lock_init_s {
   _Bool is_nest_lock;                /* nested lock or not          */
-  ompt_wait_id_t wait_id;            /* ID of mutex being awaited   */
-  uint32_t hint;                     /* based on OMP lock hint      */
-  uint32_t impl;                     /* implementation of mutex     */
+  ompt_wait_id_t wait_id,            /* wait ID                     */
+  uint32_t hint,                     /* OMP lock hint               */
+  uint32_t kind,                     /* implementation kind         */
   const void *codeptr_ra;            /* return address of api call  */          
 } ompt_record_lock_init_t;
 
-typedef struct ompt_record_destroy_lock_s {
+typedef struct ompt_record_lock_destroy_s {
   _Bool is_nest_lock;                /* nested lock or not          */
   ompt_wait_id_t wait_id;            /* ID of mutex being awaited   */
   const void *codeptr_ra;            /* return address of api call  */       
-} ompt_record_destroy_lock_t;
+} ompt_record_lock_destroy_t;
 
 typedef struct ompt_record_mutex_acquire_s {
   ompt_mutex_kind_t kind;            /* kind of mutex               */
@@ -2376,7 +2372,7 @@ typedef struct ompt_record_mutex_acquire_s {
 } ompt_record_mutex_acquire_t;
 
 typedef struct ompt_record_mutex_s {
-  ompt_mutex_kind_t kind;            /* some mutex or type of mutex */
+  ompt_mutex_kind_t kind;            /* type of mutex               */
   ompt_wait_id_t wait_id;            /* ID of mutex being awaited   */
   const void *codeptr_ra;            /* return address of api call  */       
 } ompt_record_mutex_t;
@@ -2402,20 +2398,20 @@ typedef struct ompt_record_target_kernel_s {
   ompt_target_time_t end_time;       /* end time                    */
 } ompt_record_target_kernel_t;
 
-typedef struct ompt_record_master_s {
+typedef struct ompt_record_scoped_master_s {
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
   ompt_parallel_id_t parallel_id;    /* ID of parallel region       */
   ompt_task_id_t  task_id;           /* ID of task                  */
   const void *codeptr_ra;            /* return address of api call  */
-} ompt_record_master_t;
+} ompt_record_scoped_master_t;
 
-typedef struct ompt_record_workshare_s {
+typedef struct ompt_record_scoped_worksharing_s {
   ompt_worksharing_type_t wstype;    /* loop, sections, single ...  */
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
   ompt_parallel_id_t parallel_id;    /* ID of parallel region       */
   ompt_task_id_t  task_id;           /* ID of task                  */
   const void *codeptr_ra;            /* return address of api call  */
-} ompt_record_workshare_t;
+} ompt_record_scoped_worksharing_t;
 
 typedef struct ompt_record_flush_s {
   void *codeptr_ra;                /* return address of api call   */
@@ -2423,31 +2419,31 @@ typedef struct ompt_record_flush_s {
 
 /* OMPT record */
 typedef struct ompt_record_ompt_s {
-  ompt_event_t type;                             /* event type          */
-  ompt_target_time_t time;                       /* record timestamp    */
-  ompt_thread_id_t thread_id;                    /* record's thread ID  */
-  ompt_target_id_t target_id;                    /* host context        */
+  ompt_event_t type;                              /* event type          */
+  ompt_target_time_t time;                        /* record timestamp    */
+  ompt_thread_id_t thread_id;                     /* record's thread ID  */
+  ompt_target_id_t target_id;                     /* host context        */
   union {
-    ompt_record_thread_begin_t thread_begin;     /* for thread begin    */
-    ompt_record_idle_t idle;                     /* for idle            */
-    ompt_record_parallel_begin_t parallel_begin; /* for parallel begin  */
-    ompt_record_parallel_end_t parallel_end;     /* for parallel end    */
-    ompt_record_task_create_t task_create;       /* for task create     */
-    ompt_record_task_dependence_t task_dep;      /* for task dependence */
-    ompt_record_task_schedule_t task_sched;      /* for task schedule   */
-    ompt_record_scoped_implicit_t implicit;      /* for implicit task   */
-    ompt_record_scoped_sync_t sync;              /* for sync            */
-    ompt_record_target_data_t data;              /* for target data     */
-    ompt_record_target_data_map_t data_map;      /* for target data map */
-    ompt_record_target_kernel_t kernel;          /* for target kernel   */
-    ompt_record_init_lock_t lock_init;           /* for lock init       */
-    ompt_record_destroy_lock_t lock_destroy;     /* for lock destroy    */
-    ompt_record_mutex_acquire_t mutex_acquire;   /* for mutex acquire   */
-    ompt_record_mutex_t mutex;                   /* for mutex           */
-    ompt_record_scoped_nested_lock_t nest_lock;  /* for nested lock     */
-    ompt_record_master_t master;                 /* for master          */
-    ompt_record_workshare_t workshare;           /* for workshares      */
-    ompt_record_flush_t flush;                   /* for flush           */
+    ompt_record_thread_begin_t thread_begin;      /* for thread begin    */
+    ompt_record_idle_t idle;                      /* for idle            */
+    ompt_record_parallel_begin_t parallel_begin;  /* for parallel begin  */
+    ompt_record_parallel_end_t parallel_end;      /* for parallel end    */
+    ompt_record_task_create_t task_create;        /* for task create     */
+    ompt_record_task_dependence_t task_dep;       /* for task dependence */
+    ompt_record_task_schedule_t task_sched;       /* for task schedule   */
+    ompt_record_scoped_implicit_t implicit;       /* for implicit task   */
+    ompt_record_scoped_sync_region_t sync_region; /* for sync            */
+    ompt_record_target_data_t data;               /* for target data     */
+    ompt_record_target_data_map_t data_map;       /* for target data map */
+    ompt_record_target_kernel_t kernel;           /* for target kernel   */
+    ompt_record_init_lock_t lock_init;            /* for lock init       */
+    ompt_record_lock_destroy_t lock_destroy;      /* for lock destroy    */
+    ompt_record_mutex_acquire_t mutex_acquire;    /* for mutex acquire   */
+    ompt_record_mutex_t mutex;                    /* for mutex           */
+    ompt_record_scoped_nested_lock_t nested_lock; /* for nested lock     */
+    ompt_record_scoped_master_t master;           /* for master          */
+    ompt_record_scoped_worksharing_t worksharing; /* for workshares      */
+    ompt_record_flush_t flush;                    /* for flush           */
   } record;
 } ompt_record_ompt_t;
 \end{verbatim}
