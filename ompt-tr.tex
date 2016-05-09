@@ -2317,13 +2317,13 @@ typedef struct ompt_record_parallel_end_s {
   const void *codeptr_ra;            /* return address of api call  */ 
 } ompt_record_parallel_end_t;
 
-typedef struct ompt_record_target_task_create_s {
+typedef struct ompt_record_task_create_s {
   ompt_task_id_t parent_task_id;     /* ID of parent task           */
   const ompt_frame_t *parent_frame;  /* frame data for parent task  */
   ompt_task_id_t new_task_id;        /* ID of created task          */
   ompt_task_type_t type;             /* type of task being created  */ 
   const void *codeptr_ra;            /* return address of api call  */ 
-} ompt_record_target_task_create_t;
+} ompt_record_task_create_t;
 
 /* note: not task dependences record since it points to data       */
 /*        rather than containing it                                */
