@@ -1179,7 +1179,7 @@ OMPT_API int ompt_target_get_device_info(
   const char **type, 
   ompt_target_device_t **device,
   ompt_function_lookup_t *lookup,
-  const char *documentation
+  const char **documentation
 );
 \end{verbatim}
 \end{quote}
@@ -2186,6 +2186,14 @@ OMPT_API _Bool ompt_get_target_info(
 );
 
 /* target device inquiry */
+OMPT_API int ompt_target_get_device_info(
+  int32_t device_id, 
+  const char **type, 
+  ompt_target_device_t **device,
+  ompt_function_lookup_t *lookup,
+  const char **documentation
+);
+
 OMPT_API int ompt_target_get_device_id(
   void
 );
@@ -2227,11 +2235,6 @@ OMPT_TARG_API int ompt_target_pause_trace(
 OMPT_TARG_API int ompt_target_stop_trace(
   ompt_target_device_t *device   /* target device handle                                 */
 );
-
-
-
-
-
 
 /* target trace record processing */
 OMPT_TARG_API int ompt_target_advance_buffer_cursor(
