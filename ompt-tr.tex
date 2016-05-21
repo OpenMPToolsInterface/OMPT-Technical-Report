@@ -1327,13 +1327,12 @@ typedef void (*ompt_target_buffer_complete_callback_t) (
   int32_t device_id, 
   const ompt_target_buffer_t *buffer,
   size_t bytes,
-  ompt_target_buffer_cursor_t begin,
-  ompt_target_buffer_cursor_t end
+  ompt_target_buffer_cursor_t begin
 );
 \end{verbatim}
 \end{quote}
 A target device triggers a call to \verb|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
-The argument \verb|device_id| indicates the device whose events the buffer contains. The argument \verb|buffer| is the address of a buffer previously allocated by a \emph{buffer request} callback. The argument \verb|bytes| indicates the full size of the buffer. The arguments \verb|begin| and \verb|end|, respectively, are opaque cursors that indicate the position at the beginning of the first record in the buffer and the position after the last record in the buffer. If \verb|begin| is equal to \verb|end|, the buffer is empty. 
+The argument \verb|device_id| indicates the device whose events the buffer contains. The argument \verb|buffer| is the address of a buffer previously allocated by a \emph{buffer request} callback. The argument \verb|bytes| indicates the full size of the buffer. The argument \verb|begin| is an opaque cursor that indicates the position at the beginning of the first record in the buffer.
 
 Under normal operating conditions, every event buffer provided to a device by a \emph{buffer request} callback will receive a \emph{buffer complete} callback before the OpenMP runtime shuts down. If an exceptional condition terminates  execution of an OpenMP program, the OpenMP runtime may choose not to provide a \emph{buffer complete} callback for buffers provided to any device.
 
@@ -1386,7 +1385,8 @@ event records deposited in a buffer by a device. Function \verb|ompt_target_adva
 \begin{quote}
 \begin{verbatim}
 OMPT_TARG_API int ompt_target_advance_buffer_cursor(
-  ompt_target_buffer_t *buffer, 
+  ompt_target_buffer_t *buffer,
+  size_t size, 
   ompt_target_buffer_cursor_t current, 
   ompt_target_buffer_cursor_t *next
 ); 
@@ -2096,8 +2096,7 @@ typedef void (*ompt_target_buffer_complete_callback_t) (
   int32_t device_id,                 /* target device               */
   const ompt_target_buffer_t *buf,   /* target trace records        */
   size_t bytes,                      /* valid bytes in the buffer   */
-  ompt_target_buffer_cursor_t begin, /* position of first record    */
-  ompt_target_buffer_cursor_t end    /* position after last record  */ 
+  ompt_target_buffer_cursor_t begin  /* position of first record    */
 );
 
 typedef void (*ompt_get_target_info_inquiry_t) (
@@ -2239,6 +2238,7 @@ OMPT_TARG_API int ompt_target_stop_trace(
 /* target trace record processing */
 OMPT_TARG_API int ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
+  size_t size,                         /* the length of valid data in the buffer         */
   ompt_target_buffer_cursor_t current, /* cursor identifying position in buffer          */
   ompt_target_buffer_cursor_t *next    /* pointer to new cursor for next position        */
 );
