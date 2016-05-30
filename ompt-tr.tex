@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised May 21, 2016}
+\date{Revised May 31, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -110,6 +110,7 @@ Section~\ref{sec:states} describes the state information maintained by the OpenM
 Section~\ref{sec:events} describes the OMPT callbacks to notify a tool of various OpenMP runtime events during an execution.
 Section~\ref{sec:data} describes the data structures used by the OMPT interface.
 Section~\ref{sec:inquiry} describes the runtime system inquiry operations supported by OMPT for the benefit of tools.
+Section~\ref{sec:target-device-records} describes an API for tracing activities on target devices.
 Section~\ref{sec:enabling} describes the OMPT API operations for tool initialization.
 Section~\ref{sec:app-facing} describes the tool control interface available to applications.
 Appendix~\ref{appendix:ompt-types} provides a definition of the complete OMPT interface in C.
@@ -484,7 +485,7 @@ The OpenMP runtime invokes this callback prior to submitting a kernel for execut
 This callback has type signature \verb|ompt_target_submit_callback_t|.
 The callback argument \verb|target_id| indicates the instance of the target construct associated with this operation.
 The callback argument \verb|host_op_id| provides a unique host-side identifier that represents the activity on the device.
-The callback argument \verb|requested_num_teams|  \verb|granted_num_teams| indicate, respectively, the number of teams requested by the user and granted by the runtime.
+The callback arguments \verb|requested_num_teams|  \verb|granted_num_teams| indicate, respectively, the number of teams requested by the user and granted by the runtime.
 
 \end{description}
 
@@ -609,8 +610,8 @@ The following events designed for instrumentation-based tools enable tools to re
   
 \item \verb|ompt_event_task_dependence_pair|
 
-The OpenMP runtime invokes this callback to report a dependence between a producer (\verb|first_task_id|) 
-and a consumer (\verb|second_task_id|) that blocked execution of the consumer.
+The OpenMP runtime invokes this callback to report a dependence between a producer (\verb|src_task_id|) 
+and a consumer (\verb|sink_task_id|) that blocked execution of the consumer.
 This callback will occur before the consumer knows that the dependence is satisfied. This may happen early or late.
 Note: this callback is used only to report blocking dependences between sibling tasks whose lifetimes overlap. 
 No callback will occur if a producer task finishes before a consumer task is created.
@@ -799,8 +800,8 @@ typedef uint64_t ompt_thread_id_t;
 \end{verbatim}
 \end{quote}
 \end{comment}
-  A thread's identifier is assigned when the thread is created. Identifiers assigned to threads on each device are unique from the time an 
-  Until it is shutdown an OpenMP runtime is consdered to be in an initialized state.
+  A thread's identifier is assigned when the thread is created. 
+  Identifiers assigned to threads on each device are unique from the time an OpenMP runtime is initialized until it is shut down.
   A thread identifier can be retrieved
   on demand by invoking the  \verb|ompt_get_thread_id|   
   function (described in Section~\ref{sec:thread-inquiry}).
@@ -984,7 +985,7 @@ the following interface for enumerating all states that may be reported by the r
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_enumerate_states(
+OMPT_API _Bool ompt_enumerate_states(
   omp_state_t current_state, 
   omp_state_t *next_state, 
   const char **next_state_name
@@ -998,8 +999,8 @@ the value \verb|omp_state_undefined| should be supplied for \verb|current_state|
 The argument \verb|next_state| is a pointer to an \verb|omp_state_t| that will be set to the code for the next state in the enumeration.
 The argument \verb|next_state_name| is a pointer to a location that will be filled in with a pointer to the name associated with \verb|next_state|. 
 Subsequent invocations of \verb|ompt_enumerate_states| should pass the code returned in \verb|next_state| by the prior call.
-Whenever one or more states are left in the enumeration, \verb|ompt_enumerate_states| will return 1.
-When the last state in the enumeration is passed to \verb|ompt_enumerate_states| as \verb|current_state|, the function will return 0 indicating that the enumeration is complete.
+Whenever one or more states are left in the enumeration, \verb|ompt_enumerate_states| will return \verb|true|.
+When the last state in the enumeration is passed to \verb|ompt_enumerate_states| as \verb|current_state|, the function will return \verb|false| indicating that the enumeration is complete.
 An example of how to enumerate the states supported by an OpenMP runtime is shown below:
 
 \begin{quote}
@@ -1023,7 +1024,7 @@ the following interface for enumerating the synchronization implementations it e
 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_enumerate_mutex_kinds(
+OMPT_API _Bool ompt_enumerate_mutex_kinds(
   uint32_t current_kind, 
   uint32_t *next_kind, 
   const char **next_kind_name
@@ -1038,9 +1039,9 @@ To begin enumerating the mutex implementations that a runtime  employs, one shou
 The argument \verb|next_kind| is a pointer to an integer that will be set to the code for the next implementation in the enumeration.
 The argument \verb|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the mutex implementation associated with \verb|next_kind|. 
 Each subsequent invocation of \verb|ompt_enumerate_mutex_kinds| should pass the code returned in \verb|next_kind| by the prior call.
-Whenever one or more mutex implementations are left in the enumeration, \verb|ompt_enumerate_mutex_kinds| will return 1.
+Whenever one or more mutex implementations are left in the enumeration, \verb|ompt_enumerate_mutex_kinds| will return \verb|true|.
 When the last mutex implementation type in the enumeration is passed to \verb|ompt_enumerate_mutex_kinds| as \verb|current_kind|, 
-the function will return 0 indicating that the enumeration is complete.
+the function will return \verb|false| indicating that the enumeration is complete.
 An example of how to enumerate the types of mutex implementations supported by an OpenMP runtime is shown below:
 
 \begin{quote}
@@ -1158,7 +1159,7 @@ OMPT_API _Bool ompt_get_target_info(
 This function returns \verb|false| if the thread invoking it is
 outside a target region. In that case, the values of both of its
 returned parameters are undefined. If \verb|ompt_get_target_info|
-returns true, the value for \verb|*host_op_id| will be
+returns \verb|true|, the value for \verb|*host_op_id| will be
 \verb|ompt_target_id_none| if the thread invoking it is not in the process of initiating an operation on a target (e.g., copying data to or from an accelerator or launching a kernel).  {\em This function is async signal safe.}
 
 \subsection{Target Device Inquiry}
@@ -1174,7 +1175,7 @@ This inquiry function is only supported on the host. If the inquiry function is 
 Function \verb|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about the attached device with  index \verb|device_id|. 
 \begin{quote}
 \begin{verbatim}
-OMPT_API int ompt_target_get_device_info(
+OMPT_API _Bool ompt_target_get_device_info(
   int32_t device_id, 
   const char **type, 
   ompt_target_device_t **device,
@@ -1183,9 +1184,9 @@ OMPT_API int ompt_target_get_device_info(
 );
 \end{verbatim}
 \end{quote}
-If \verb|device_id| refers to a valid device, the function will return 0 indicating success; otherwise, it will return a non-zero value and the values of its return parameters are undefined. The runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of the specific device. The OpenMP runtime will set \verb|*device| to point to an opaque object that represents the target device instance. The device pointer returned will need to be supplied as an argument to calls to device-specific functions in the target interface to identify the device being addressed.
+If \verb|device_id| refers to a valid device, the function will return \verb|true| indicating success; otherwise, it will return \verb|false| and the values of its return parameters are undefined. The runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of the specific device. The OpenMP runtime will set \verb|*device| to point to an opaque object that represents the target device instance. The device pointer returned will need to be supplied as an argument to calls to device-specific functions in the target interface to identify the device being addressed.
 
-The OpenMP runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The \verb|lookup| function for a device will enable a tool to look up all functions marked \verb|OMPT_TARG_API|.  If a named function is not available in an OpenMP runtime's implementation of OMPT, lookup will return NULL. Documentation for the names and type signatures of any additional device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|documentation|. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the device-specific API or pointers to external documentation.
+The OpenMP runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The \verb|lookup| function for a device will enable a tool to look up all functions marked \verb|OMPT_TARG_API|.  If a named function is not available in an OpenMP runtime's implementation of OMPT, lookup will return NULL. Documentation for the names and type signatures of any additional device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|*documentation|. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the device-specific API or pointers to external documentation.
 
 Function \verb|ompt_target_get_device_id| returns the device identifier for the active target device:
 \begin{quote}
@@ -1264,7 +1265,8 @@ OMPT_TARG_API int ompt_target_set_trace_ompt(
 The argument \verb|device| is a handle to identify the target device whose performance monitoring may be altered by invoking this function. 
 The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| should be enabled or disabled by this invocation.
 Actual record types are specified using positive numbers; an \verb|rtype| of 0 indicates that all record types will be enabled or disabled.
-Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|.
+Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|. 
+If a single invocation of \verb|ompt_target_set_trace_ompt| is used to enable or disable more than one event (i.e., \verb|rtype|=0), the return code will be 3 if tracing is possible for one or more events but not for others.
 \begin{table}
 \centering
 \begin{tabular}{|l|l|}
@@ -1276,7 +1278,7 @@ return code & meaning \\\hline
 3 & event may occur and will be traced  when convenient\\\hline
 4 & event may occur and will always be traced if event occurs\\\hline
 \end{tabular}
-\caption{Meaning of return codes for {\tt ompt\_trace\_set\_ompt}.}
+\caption{Meaning of return codes for {\tt ompt\_trace\_set\_ompt} and {\tt ompt\_target\_set\_trace\_native}.}
 \label{table:record_set}
 \end{table}
 
@@ -1300,6 +1302,9 @@ OMPT_TARG_API int ompt_target_set_trace_native(
 The argument \verb|device| is a handle to idenitfy the target device whose performance monitoring may be altered by invoking this function. 
 The boolean \verb|enable| indicates whether recording of events should be enabled or disabled by this invocation.
 The kinds of native device monitoring to enable or disable are specified by \verb|flags|. Each kind of monitoring is specified by a flag bit. Flags can be composed by using logical {\tt or}  to combine enumeration values from type \verb|ompt_native_mon_flags_t|.
+Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_native|.
+If a single invocation of \verb|ompt_target_set_trace_ompt| is used to enable/disable more than one kind of monitoring, 
+the return code will be 3 if tracing is possible for one or more kinds of monitoring but not for others.
 
 \subsection{Start and Stop Recording Traces}
 \label{sec:start-stop-recording}
@@ -1340,7 +1345,7 @@ To start, pause, or stop tracing for a specific target device associated with th
 a tool calls the functions \verb|ompt_target_start_trace|, \verb|ompt_target_pause_trace|, or \verb|ompt_target_stop_trace| with the following type signatures:
 \begin{quote}
 \begin{verbatim}
-OMPT_TARG_API int ompt_target_start_trace(
+OMPT_TARG_API _Bool ompt_target_start_trace(
   ompt_target_device_t *device,                     /* target device handle       */
   ompt_target_buffer_request_callback_t request,    /* fn to request trace buffer */
   ompt_target_buffer_complete_callback_t complete,  /* fn to return trace buffer  */
@@ -1351,7 +1356,7 @@ OMPT_TARG_API int ompt_target_start_trace(
 
 \begin{quote}
 \begin{verbatim}
-OMPT_TARG_API int ompt_target_pause_trace(
+OMPT_TARG_API _Bool ompt_target_pause_trace(
   ompt_target_device_t *device,                     /* target device handle       */
   _Bool begin_pause                                 /* true=begin, false=end      */
 );
@@ -1360,12 +1365,13 @@ OMPT_TARG_API int ompt_target_pause_trace(
 
 \begin{quote}
 \begin{verbatim}
-OMPT_TARG_API int ompt_target_stop_trace(
+OMPT_TARG_API _Bool ompt_target_stop_trace(
   ompt_target_device_t *device                      /* target device handle       */
 );
 \end{verbatim}
 \end{quote}
 \noindent
+Each invocation returns \verb|true| if the command succeeded and \verb|false| otherwise.
 A call to \verb|ompt_target_stop_trace| also implicitly requests that the device flush any buffers that it owns.
 
 %%? johnmc says: we should export one more function from a target device: ompt_target_scope(begin/end, host_id)
@@ -1384,7 +1390,7 @@ event records deposited in a buffer by a device. Function \verb|ompt_target_adva
 
 \begin{quote}
 \begin{verbatim}
-OMPT_TARG_API int ompt_target_advance_buffer_cursor(
+OMPT_TARG_API _Bool ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer,
   size_t size, 
   ompt_target_buffer_cursor_t current, 
@@ -1392,7 +1398,7 @@ OMPT_TARG_API int ompt_target_advance_buffer_cursor(
 ); 
 \end{verbatim}
 \end{quote}
-It returns 0 if the advance is successful and 1 if \verb|current| indicates a position outside the valid region of the buffer.
+It returns \verb|true| if the advance is successful and the returned value \verb|*next| is valid.
 
 The function \verb|ompt_target_buffer_get_record_type| allows a tool to inspect the type of a record to determine whether it is a known type  worth processing further. 
 \begin{quote}
@@ -2139,14 +2145,14 @@ OMPT_API int ompt_get_callback(
 );
 
 /* enumerate all states used by a runtime */
-OMPT_API int ompt_enumerate_states(  
+OMPT_API _Bool ompt_enumerate_states(  
   omp_state_t current_state,    /* a valid state in the enumeration                      */
   omp_state_t *next_state,      /* the next state (or none) in the enumeration           */
   const char **next_state_name  /* name of the next state in the enumeration             */
 );
 
 /* enumerate all kinds of mutex implementations */
-OMPT_API int ompt_enumerate_mutex_kinds(  
+OMPT_API _Bool ompt_enumerate_mutex_kinds(  
   uint32_t current_kind,        /* a mutex kind in the enumeration                       */
   uint32_t *next_kind,          /* the next mutex kind (or none) in the enumeration      */
   const char **next_kind_name   /* name of the next mutex in the enumeration             */
@@ -2185,7 +2191,7 @@ OMPT_API _Bool ompt_get_target_info(
 );
 
 /* target device inquiry */
-OMPT_API int ompt_target_get_device_info(
+OMPT_API _Bool ompt_target_get_device_info(
   int32_t device_id, 
   const char **type, 
   ompt_target_device_t **device,
@@ -2236,7 +2242,7 @@ OMPT_TARG_API int ompt_target_stop_trace(
 );
 
 /* target trace record processing */
-OMPT_TARG_API int ompt_target_advance_buffer_cursor(
+OMPT_TARG_API _Bool ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
   size_t size,                         /* the length of valid data in the buffer         */
   ompt_target_buffer_cursor_t current, /* cursor identifying position in buffer          */
@@ -2505,7 +2511,6 @@ Below the stack for each thread in Figure~\ref{fig:frame}, the figure shows the 
 \begin{itemize}
 \item distribute (fix all of the implications)
 \item teams?
-\item section~\ref{appendix:ompt-records} still needs to be updated
 \end{itemize}
 }
 
