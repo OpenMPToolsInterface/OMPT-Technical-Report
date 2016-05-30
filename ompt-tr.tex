@@ -2145,14 +2145,14 @@ OMPT_API int ompt_get_callback(
 );
 
 /* enumerate all states used by a runtime */
-OMPT_API _Bool ompt_enumerate_states(  
+OMPT_API _Bool ompt_enumerate_states(
   omp_state_t current_state,    /* a valid state in the enumeration                      */
   omp_state_t *next_state,      /* the next state (or none) in the enumeration           */
   const char **next_state_name  /* name of the next state in the enumeration             */
 );
 
 /* enumerate all kinds of mutex implementations */
-OMPT_API _Bool ompt_enumerate_mutex_kinds(  
+OMPT_API _Bool ompt_enumerate_mutex_kinds(
   uint32_t current_kind,        /* a mutex kind in the enumeration                       */
   uint32_t *next_kind,          /* the next mutex kind (or none) in the enumeration      */
   const char **next_kind_name   /* name of the next mutex in the enumeration             */
