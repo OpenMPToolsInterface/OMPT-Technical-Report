@@ -1,4 +1,7 @@
 \documentclass{article}
+%DIF LATEXDIFF DIFFERENCE FILE
+%DIF DEL ompt-tr-orig-lst.tex   Mon Jun 13 16:44:59 2016
+%DIF ADD ompt-tr-lst.tex        Mon Jun 13 16:46:09 2016
 \usepackage{graphicx}
 \DeclareGraphicsExtensions{.pdf}
 
@@ -62,7 +65,25 @@ and other members of the OpenMP Tools Working Group}
 \lstset{style=cstyle}
 
 \newcommand{\descheader}[1]{{\needspace{3\baselineskip}\vspace{1em}\noindent \fbox{#1}}}
-
+%DIF PREAMBLE EXTENSION ADDED BY LATEXDIFF
+%DIF UNDERLINE PREAMBLE %DIF PREAMBLE
+\RequirePackage[normalem]{ulem} %DIF PREAMBLE
+\RequirePackage{color}\definecolor{RED}{rgb}{1,0,0}\definecolor{BLUE}{rgb}{0,0,1} %DIF PREAMBLE
+\providecommand{\DIFadd}[1]{{\protect\color{blue}\uwave{#1}}} %DIF PREAMBLE
+\providecommand{\DIFdel}[1]{{\protect\color{red}\sout{#1}}}                      %DIF PREAMBLE
+%DIF SAFE PREAMBLE %DIF PREAMBLE
+\providecommand{\DIFaddbegin}{} %DIF PREAMBLE
+\providecommand{\DIFaddend}{} %DIF PREAMBLE
+\providecommand{\DIFdelbegin}{} %DIF PREAMBLE
+\providecommand{\DIFdelend}{} %DIF PREAMBLE
+%DIF FLOATSAFE PREAMBLE %DIF PREAMBLE
+\providecommand{\DIFaddFL}[1]{\DIFadd{#1}} %DIF PREAMBLE
+\providecommand{\DIFdelFL}[1]{\DIFdel{#1}} %DIF PREAMBLE
+\providecommand{\DIFaddbeginFL}{} %DIF PREAMBLE
+\providecommand{\DIFaddendFL}{} %DIF PREAMBLE
+\providecommand{\DIFdelbeginFL}{} %DIF PREAMBLE
+\providecommand{\DIFdelendFL}{} %DIF PREAMBLE
+%DIF END PREAMBLE EXTENSION ADDED BY LATEXDIFF
 
 \begin{document}  
 \begin{comment}   
@@ -71,11 +92,11 @@ and other members of the OpenMP Tools Working Group}
    pages={-},
    pagecommand={},
  ]{OMPT_TR_header}
- 
+
 \setcounter{page}{1}
 \pagestyle{plain}
 \end{comment}
-                                           
+
 \maketitle
 \section{Introduction}
 Today, it is difficult to produce high quality tools that support 
@@ -130,7 +151,7 @@ The features required by a minimally compliant implementation are summarized bel
 \item Provide callbacks to tools when encountering the following  events:  thread begin/end, parallel region begin/end, task region begin/end, a user-level tool control call, and runtime shutdown.
 \item Implement several async signal safe inquiry functions to retrieve information from the OpenMP runtime.
 \item Have the OpenMP runtime initiate a callback to a tool initialization routine 
-as directed by the value of a new OpenMP environment variable (\verb|OMP_TOOL|) and provide a function to register tool callbacks with the runtime.
+as directed by the value of a new OpenMP environment variable (\lstinline|OMP_TOOL|) and provide a function to register tool callbacks with the runtime.
 \end{itemize}
 
 \subsection{Document Roadmap}
@@ -153,20 +174,20 @@ To enable a tool to understand what an OpenMP thread is doing, when a tool regis
 will maintain state information for each OpenMP thread that can be queried by the tool. 
 The state maintained for each thread by the OpenMP runtime is an
 approximation of the thread's instantaneous state. 
-OMPT uses the enumeration type \verb|omp_state_t| for states;
+OMPT uses the enumeration type \lstinline|omp_state_t| for states;
 Appendix~\ref{appendix:ompt-types:states} defines this type.
 When the state of a thread not associated with the OpenMP runtime is queried, the runtime returns 
-\verb|omp_state_undefined|.
+\lstinline|omp_state_undefined|.
 
 \begin{comment}
-For each OpenMP thread the runtime maintains not only a state but also an \verb|ompt_wait_id_t|
+For each OpenMP thread the runtime maintains not only a state but also an \lstinline|ompt_wait_id_t|
 identifier.  When a thread is waiting for a lock, critical region,
 ordered, or atomic, and the thread is in a wait
 state, then 
-the thread's \verb|wait_id| field identifies the lock, critical construct, ordered construct, atomic construct, or internal variable
+the thread's \lstinline|wait_id| field identifies the lock, critical construct, ordered construct, atomic construct, or internal variable
 upon which the
-thread is waiting. The semantics of the values used for a \verb|wait_id| are implementation defined.
-A thread's \verb|wait_id| is undefined if the thread
+thread is waiting. The semantics of the values used for a \lstinline|wait_id| are implementation defined.
+A thread's \lstinline|wait_id| is undefined if the thread
 is not in a wait state.
 \end{comment}
 
@@ -174,11 +195,11 @@ Some states must be supported by any compliant implementation, e.g., those indic
 For some states, OpenMP runtimes have flexibility about whether to report the state early or late.
 For example, consider when a thread acquires a lock. One
 compliant runtime may transition a thread's state to 
-\verb|omp_state_wait_lock|  early before the thread attempts to acquire a
+\lstinline|omp_state_wait_lock|  early before the thread attempts to acquire a
 lock. Another compliant runtime may transition a thread's state to
-\verb|omp_state_wait_lock| late, only if the thread begins to spin or
+\lstinline|omp_state_wait_lock| late, only if the thread begins to spin or
 block to wait for an unavailable lock. A third compliant runtime
-may transition a thread's state to \verb|omp_state_wait_lock| even later, e.g., only
+may transition a thread's state to \lstinline|omp_state_wait_lock| even later, e.g., only
 after the thread waits for a significant amount of time. 
 
 State values 0 to 127 are reserved for current OMPT states and future extensions.  
@@ -186,7 +207,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 \descheader{Idle State}
 
 \begin{description}
-\item \verb|omp_state_idle| 
+\item \lstinline|omp_state_idle| 
 
   The thread is idle, waiting for work.
 \end{description}
@@ -195,21 +216,21 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|omp_state_work_serial| 
+\item \lstinline|omp_state_work_serial| 
 
   The thread is executing code outside all parallel regions. 
 
-\item \verb|omp_state_work_parallel| 
+\item \lstinline|omp_state_work_parallel| 
 
   The thread is executing code within the scope of a parallel region construct.
 
 \sloppy
-\item \verb|omp_state_work_reduction| 
- 
+\item \lstinline|omp_state_work_reduction| 
+
   The thread is combining partial reduction results from threads in its team. A compliant
   runtime might never report a thread in this state; a thread
   combining partial reduction results may  report its state as
-  \verb|omp_state_work_parallel| or \verb|omp_state_overhead|.
+  \lstinline|omp_state_work_parallel| or \lstinline|omp_state_overhead|.
 
 \end{description}
 
@@ -217,7 +238,7 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-\item \verb|omp_state_overhead| 
+\item \lstinline|omp_state_overhead| 
 
   A thread may be reported as being in the overhead state at any point while executing within an OpenMP runtime, e.g., while
     preparing a parallel region, 
@@ -233,45 +254,45 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 
 \begin{description}
 
-  \item \verb|omp_state_wait_barrier| 
-  
+  \item \lstinline|omp_state_wait_barrier| 
+
   \sloppy
   The thread is waiting at either an implicit or explicit barrier.
   A  compliant implementation may have a thread enter this state
   early, when the thread encounters a barrier, or late, when the
-  thread begins to wait at the barrier. A  compliant implementation may never report a thread in this state; instead, a thread might report its state as \verb|omp_state_wait_barrier_implicit|  or \verb|omp_state_wait_barrier_explicit|, as appropriate.
-  
-  \item \verb|omp_state_wait_barrier_implicit| 
-  
+  thread begins to wait at the barrier. A  compliant implementation may never report a thread in this state; instead, a thread might report its state as \lstinline|omp_state_wait_barrier_implicit|  or \lstinline|omp_state_wait_barrier_explicit|, as appropriate.
+
+  \item \lstinline|omp_state_wait_barrier_implicit| 
+
 \sloppy
   The thread is waiting at an implicit barrier in a parallel region. 
   A  compliant implementation may have a thread enter this state
   early, when the thread encounters a barrier, or late, when the
   thread begins to wait at the barrier.
-  A  compliant runtime implementation may report \verb|omp_state_wait_barrier| for implicit barriers.
-  
-    \item \verb|omp_state_wait_barrier_explicit| 
+  A  compliant runtime implementation may report \lstinline|omp_state_wait_barrier| for implicit barriers.
+
+    \item \lstinline|omp_state_wait_barrier_explicit| 
 
   The thread is waiting at an explicit barrier  in a parallel region. 
   A  compliant implementation may have a thread enter this state
   early, when the thread encounters a barrier, or late, when the
   thread begins to wait at the barrier.
-  A  compliant runtime implementation may report \verb|omp_state_wait_barrier| for explicit barriers.
-  
+  A  compliant runtime implementation may report \lstinline|omp_state_wait_barrier| for explicit barriers.
+
 \end{description}
-  
+
 \descheader{Task Wait States}
 
 \begin{description}
 
-\item \verb|omp_state_wait_taskwait| 
+\item \lstinline|omp_state_wait_taskwait| 
 
   The thread is waiting at a taskwait construct. A compliant
   implementation may have a thread enter this state early, when the
   thread encounters a taskwait construct, or late, when the thread
   begins to wait for an uncompleted task.
 
-\item \verb|omp_state_wait_taskgroup| 
+\item \lstinline|omp_state_wait_taskgroup| 
 
   The thread is waiting at the end of a taskgroup construct. A compliant
   implementation may have a thread enter this state early, when the
@@ -284,26 +305,26 @@ State values 0 to 127 are reserved for current OMPT states and future extensions
 \descheader{Mutex Wait States}
 
 OpenMP provides several mechanisms that enforce mutual exclusion: locks, critical, atomic, and ordered. 
-A runtime implementation may report a thread waiting for any type of mutual exclusion using either a state that precisely identifies the type of mutual exclusion, or  a more generic state such as  \verb|omp_state_wait_mutex| or \verb|omp_state_wait_lock|. 
+A runtime implementation may report a thread waiting for any type of mutual exclusion using either a state that precisely identifies the type of mutual exclusion, or  a more generic state such as  \lstinline|omp_state_wait_mutex| or \lstinline|omp_state_wait_lock|. 
 This flexibility may significantly simplify the maintenance of states associated with mutual exclusion in the runtime when various mechanisms for mutual exclusion rely on a common implementation, e.g., locks.
 
 % Section~\ref{sec:wait-identifier} describes how each thread maintains a wait identifier to identify what a thread is awaiting. Before a thread enters any state indicating that it is awaiting mutual exclusion, the OpenMP runtime will update the thread's wait identifier to indicate what the thread is awaiting. 
 
 \begin{description}
 
-\item \verb|omp_state_wait_mutex|
+\item \lstinline|omp_state_wait_mutex|
 
   The thread is waiting for a mutex of an unspecified type. A compliant implementation
   may have a thread enter this state early, when a thread encounters a lock acquisition or a region that requires mutual exclusion, or late, when the thread begins to wait.
 
-\item \verb|omp_state_wait_lock|
+\item \lstinline|omp_state_wait_lock|
 
   The thread is waiting for a  lock  or nest lock. A compliant implementation
   may have a thread enter this state early, when a thread
-  encounters a lock \verb|set| routine, or late, when the thread
+  encounters a lock \lstinline|set| routine, or late, when the thread
   begins to wait for a lock.
 
-\item \verb|omp_state_wait_critical| 
+\item \lstinline|omp_state_wait_critical| 
 
   The thread is waiting to enter a critical region. A compliant
   implementation may have a thread enter this state early, when the
@@ -311,7 +332,7 @@ This flexibility may significantly simplify the maintenance of states associated
   begins to wait to enter the critical region. 
 
 
-\item \verb|omp_state_wait_atomic| 
+\item \lstinline|omp_state_wait_atomic| 
 
   The thread is waiting to enter an atomic region. A compliant
   implementation may have a thread enter this state early, when the thread
@@ -319,34 +340,34 @@ This flexibility may significantly simplify the maintenance of states associated
   to wait to enter the atomic region. 
   A compliant implementation may opt not to report
   this state, for example, when using atomic hardware instructions that support non-blocking atomic implementations.
-  
 
-\item \verb|omp_state_wait_ordered| 
+
+\item \lstinline|omp_state_wait_ordered| 
 
   The thread is waiting to enter an ordered region. A compliant
   implementation may have a thread enter this state early, when the thread encounters
   an ordered construct, or late, when the thread begins
   to wait to enter the ordered region. 
-  
+
 \end{description}
-  
+
 \descheader{Target Wait States}
 
 \begin{description}
 
-\item \verb|omp_state_wait_target| 
+\item \lstinline|omp_state_wait_target| 
 
   The thread is waiting for a target region to complete.
-  
-\item \verb|omp_state_wait_target_data| 
+
+\item \lstinline|omp_state_wait_target_data| 
 
   The thread is waiting for a target data mapping operation to complete. 
-  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target data constructs.
+  A  compliant runtime implementation may report \lstinline|omp_state_wait_target| for target data constructs.
 
-\item \verb|omp_state_wait_target_update| 
+\item \lstinline|omp_state_wait_target_update| 
 
   The thread is waiting for a target  update operation to complete. 
-  A  compliant runtime implementation may report \verb|omp_state_wait_target| for target update constructs.
+  A  compliant runtime implementation may report \lstinline|omp_state_wait_target| for target update constructs.
 
 \end{description}
 
@@ -354,7 +375,7 @@ This flexibility may significantly simplify the maintenance of states associated
 
 \begin{description}
 
-\item \verb|omp_state_undefined| 
+\item \lstinline|omp_state_undefined| 
 
   This state is reserved for threads that are not user threads,
   initial threads, threads currently in an OpenMP team, or threads
@@ -366,7 +387,7 @@ This flexibility may significantly simplify the maintenance of states associated
 \label{sec:events} 
 
 This section describes callback events that an OpenMP runtime 
-may provide for use by a tool. OMPT uses the enumeration type \verb|ompt_event_t| for events; 
+may provide for use by a tool. OMPT uses the enumeration type \lstinline|ompt_event_t| for events; 
 Appendix~\ref{appendix:ompt-types:events} defines this type. 
 A tool need not register a callback for any particular event.
 All callbacks are synchronous and will run to completion before another callback will occur on the same thread.
@@ -395,20 +416,20 @@ discretion of a runtime system implementer.
 
 \begin{description}
 
-\item \verb|ompt_event_thread_begin|
+\item \lstinline|ompt_event_thread_begin|
 
 The OpenMP runtime invokes this callback in the context of an initial thread just after it initializes the runtime, or in the context of a new thread created by the runtime just after the thread initializes itself. In either case, this callback must be the first callback for a thread
-and must occur before the thread executes any OpenMP tasks. This callback has type signature \verb|ompt_thread_begin_callback_t|. 
-The callback argument \verb|thread_type| indicates the type of the thread: initial, worker, or other.
+and must occur before the thread executes any OpenMP tasks. This callback has type signature \lstinline|ompt_thread_begin_callback_t|. 
+The callback argument \lstinline|thread_type| indicates the type of the thread: initial, worker, or other.
 
 
-\item \verb|ompt_event_thread_end|
+\item \lstinline|ompt_event_thread_end|
 
 The OpenMP runtime invokes this callback
 after an OpenMP thread completes all of
 its tasks but before the thread is destroyed. The callback
 executes in the context of the OpenMP thread. This callback must be the last callback event for any worker thread; it is optional for other types of threads.
-This callback has type signature \verb|ompt_thread_end_callback_t|. 
+This callback has type signature \lstinline|ompt_thread_end_callback_t|. 
 
 \end{description}
 
@@ -416,26 +437,26 @@ This callback has type signature \verb|ompt_thread_end_callback_t|.
 
 \begin{description}
 
-\item \verb|ompt_event_parallel_begin|
+\item \lstinline|ompt_event_parallel_begin|
 
 \sloppy
 The OpenMP runtime invokes this callback 
 after a task encounters a parallel construct
 but before any implicit task starts to execute the
 parallel region's work. The callback executes in the context of the task that encountered the parallel construct.
-This callback has type signature \verb|ompt_parallel_begin_callback_t|, and includes a parameter that indicates the number of threads requested by the user. 
+This callback has type signature \lstinline|ompt_parallel_begin_callback_t|, and includes a parameter that indicates the number of threads requested by the user. 
 A tool may use this value as an upper bound on the number of threads that will participate in the team.
 
 
 
-\item \verb|ompt_event_parallel_end|
+\item \lstinline|ompt_event_parallel_end|
 
 The OpenMP runtime invokes this callback 
 after a parallel
 region executes its closing synchronization barrier but before
 resuming execution of the parent task.  The callback executes in
 the context of the task that encountered the parallel construct.
-This callback has type signature \verb|ompt_parallel_end_callback_t|. 
+This callback has type signature \lstinline|ompt_parallel_end_callback_t|. 
 
 \end{description}
 
@@ -444,77 +465,80 @@ This callback has type signature \verb|ompt_parallel_end_callback_t|.
 a nested region encountered when nested parallelism is disabled or at a nesting depth greater than the 
 maximum number of nested active parallel regions supported on a device, 
 it is implementation dependent whether or not an OpenMP runtime will perform
- \verb|ompt_event_parallel_begin| and \verb|ompt_event_parallel_end| callbacks.
+ \lstinline|ompt_event_parallel_begin| and \lstinline|ompt_event_parallel_end| callbacks.
 
 \descheader{Tasks}
 
 \begin{description}
 
-\item \verb|ompt_event_task_create|
- 
+\item \lstinline|ompt_event_task_create|
+
 The OpenMP runtime invokes this callback
 upon encountering a task construct or a target construct that causes a task to be created. 
 The callback executes in the context of
 the task that encountered the task or target construct.
-This callback has type signature \verb|ompt_task_create_callback_t|.
-The callback argument \verb|type| may indicate either an explicit task or one of the varieties of target tasks.
+This callback has type signature \lstinline|ompt_task_create_callback_t|.
+The callback argument \lstinline|type| may indicate either an explicit task or one of the varieties of target tasks.
 
-\item \verb|ompt_event_task_schedule|
+\item \lstinline|ompt_event_task_schedule|
 
  The OpenMP runtime invokes this callback after it
  completes or suspends one task and before it schedules another task.  This
  callback executes in the context of the newly-scheduled task.  
-   This callback has type signature \verb|ompt_task_schedule_callback_t|. 
-  The callback argument \verb|prior_task_data| indicates the prior task.
-  The callback argument \verb|prior_completed| is set if the prior task completed.
-  The callback argument \verb|next_task_data| indicates the task being scheduled. 
+   This callback has type signature \lstinline|ompt_task_schedule_callback_t|. 
+  The callback argument \DIFdelbegin \lstinline|-*-prior_task_id-*-| %%%
+\DIFdelend \DIFaddbegin\lstinline|+*+prior_task_data+*+| \DIFaddend indicates the prior task.
+  The callback argument \lstinline|prior_completed| is set if the prior task completed.
+  The callback argument \DIFdelbegin \lstinline|-*-next_task_id-*-| %%%
+\DIFdelend \DIFaddbegin\lstinline|+*+next_task_data+*+| \DIFaddend indicates the task being scheduled. 
 
-\item \verb|ompt_event_implicit_task|
+\item \lstinline|ompt_event_implicit_task|
 
-      The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| after an
+      The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_begin| after an
    implicit task is fully initialized but before the task begins to work.
-   The OpenMP runtime invokes this callback with the \verb|endpoint=|\verb|ompt_scope_end| after the implicit
+   The OpenMP runtime invokes this callback with the \lstinline|endpoint=|\lstinline|ompt_scope_end| after the implicit
    task executes its closing synchronization barrier but before
    the task is destroyed.
    This callback executes in the context of the implicit task.
-     This callback has type signature \verb|ompt_scoped_implicit_callback_t|. 
-   
+     This callback has type signature \lstinline|ompt_scoped_implicit_callback_t|. 
+
 \end{description}
 
 \descheader{Target Regions}
 
 \begin{description}
 
-\item \verb|ompt_event_target|
+\item \lstinline|ompt_event_target|
 
-The OpenMP runtime invokes this callback with argument \verb|endpoint=ompt_scope_begin| after a task encounters any target construct. 
-The OpenMP runtime invokes this callback with argument \verb|endpoint=ompt_scope_end| when the execution of this construct completes on the host. 
+The OpenMP runtime invokes this callback with argument \lstinline|endpoint=ompt_scope_begin| after a task encounters any target construct. 
+The OpenMP runtime invokes this callback with argument \lstinline|endpoint=ompt_scope_end| when the execution of this construct completes on the host. 
 This callback executes in the context of the task that encounters the target construct.
-This callback has type signature \verb|ompt_scoped_target_callback_t|.
-The callback argument \verb|kind| indicates the kind of target construct.
-The callback argument \verb|task_data| indicates the encountering task.
-The callback argument \verb|device_id| indicates the device associated with the target  construct.
-The callback argument \verb|target_id| uniquely identifies a target construct instance. 
-The \verb|codeptr_ra| callback argument contains the return address of the call to the OpenMP runtime routine, which relates the target construct to the user program. 
+This callback has type signature \lstinline|ompt_scoped_target_callback_t|.
+The callback argument \lstinline|kind| indicates the kind of target construct.
+The callback argument \DIFdelbegin \lstinline|-*-task_id-*-| %%%
+\DIFdelend \DIFaddbegin\lstinline|+*+task_data+*+| \DIFaddend indicates the encountering task.
+The callback argument \lstinline|device_id| indicates the device associated with the target  construct.
+The callback argument \lstinline|target_id| uniquely identifies a target construct instance. 
+The \lstinline|codeptr_ra| callback argument contains the return address of the call to the OpenMP runtime routine, which relates the target construct to the user program. 
 
-\item \verb|ompt_event_target_data|
+\item \lstinline|ompt_event_target_data|
 
 The OpenMP runtime invokes this callback prior to a transfer or delete operation and after an allocate operation. 
 This callback occurs only if will result in activity on the target device.
-This callback has type signature \verb|ompt_target_data_callback_t|.
-The callback argument \verb|optype| indicates  whether the data operation is allocate, transfer to device, transfer from device, or delete.
-The callback arguments \verb|host_addr| and \verb|device_addr|  indicate the locations of the data on the host and device, respectively.
-The callback argument \verb|size| indicates the number of data bytes.
-The callback argument \verb|target_id| indicates the instance of the target construct associated with this operation.
-The callback argument \verb|host_op_id| provides a unique host-side identifier that represents the activity on the device.
+This callback has type signature \lstinline|ompt_target_data_callback_t|.
+The callback argument \lstinline|optype| indicates  whether the data operation is allocate, transfer to device, transfer from device, or delete.
+The callback arguments \lstinline|host_addr| and \lstinline|device_addr|  indicate the locations of the data on the host and device, respectively.
+The callback argument \lstinline|size| indicates the number of data bytes.
+The callback argument \lstinline|target_id| indicates the instance of the target construct associated with this operation.
+The callback argument \lstinline|host_op_id| provides a unique host-side identifier that represents the activity on the device.
 
-\item \verb|ompt_event_target_submit|
+\item \lstinline|ompt_event_target_submit|
 
 The OpenMP runtime invokes this callback prior to submitting a kernel for execution on a target device. 
-This callback has type signature \verb|ompt_target_submit_callback_t|.
-The callback argument \verb|target_id| indicates the instance of the target construct associated with this operation.
-The callback argument \verb|host_op_id| provides a unique host-side identifier that represents the activity on the device.
-The callback arguments \verb|requested_num_teams|  \verb|granted_num_teams| indicate, respectively, the number of teams requested by the user and granted by the runtime.
+This callback has type signature \lstinline|ompt_target_submit_callback_t|.
+The callback argument \lstinline|target_id| indicates the instance of the target construct associated with this operation.
+The callback argument \lstinline|host_op_id| provides a unique host-side identifier that represents the activity on the device.
+The callback arguments \lstinline|requested_num_teams|  \lstinline|granted_num_teams| indicate, respectively, the number of teams requested by the user and granted by the runtime.
 
 \end{description}
 
@@ -523,13 +547,13 @@ The callback arguments \verb|requested_num_teams|  \verb|granted_num_teams| indi
 
 \begin{description}
 
-\item \verb|ompt_event_control|
+\item \lstinline|ompt_event_control|
 
-If the user program calls \verb|ompt_control|, the
+If the user program calls \lstinline|ompt_control|, the
 OpenMP runtime invokes this callback.
 The callback executes in the context that the call occurs in the user program.
-This callback has type signature \verb|ompt_control_callback_t|.
-Arguments passed to the callback are those passed by the user to \verb|ompt_control|.
+This callback has type signature \lstinline|ompt_control_callback_t|.
+Arguments passed to the callback are those passed by the user to \lstinline|ompt_control|.
 
 \end{description}
 
@@ -537,14 +561,14 @@ Arguments passed to the callback are those passed by the user to \verb|ompt_cont
 
 \begin{description}
 
-\item \verb|ompt_event_runtime_shutdown|
- 
+\item \lstinline|ompt_event_runtime_shutdown|
+
 The OpenMP runtime invokes this callback before it shuts down the
  runtime system.  This callback enables a tool to clean up its
  state and record or report information gathered. A runtime may later restart and reinitialize the tool by
 calling the tool initializer
 function (described in Section~\ref{sec:init}) again.
- This callback has type signature \verb|ompt_callback_t|. 
+ This callback has type signature \lstinline|ompt_callback_t|. 
 
 
 \end{description}
@@ -573,43 +597,43 @@ Since waiting indicates the absence of any activity, a thread will not receive a
 
 \begin{description}
 
-\item \verb|ompt_event_idle|
+\item \lstinline|ompt_event_idle|
 
   \sloppy
-  The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| when a thread waits for work outside a parallel region.
-  The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_end| before the thread  begins to execute an implicit task for
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_begin| when a thread waits for work outside a parallel region.
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_end| before the thread  begins to execute an implicit task for
    a parallel region or terminates. The callback executes in the environment of the waiting thread.  
-  This callback has type signature \verb|ompt_idle_callback_t|. 
+  This callback has type signature \lstinline|ompt_idle_callback_t|. 
 
 \end{description}
 
 \begin{description}
 
-\item \verb|ompt_event_sync_region_wait|
+\item \lstinline|ompt_event_sync_region_wait|
 
-  The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| when a task starts waiting in a barrier region, taskwait region, or taskgroup region.
-   The OpenMP runtime invokes this callback with the \verb|endpoint=|\verb|ompt_scope_end| when the task stops waiting in the region.
-  This callback has type signature \verb|ompt_scoped_sync_region_callback_t|. 
-   The argument \verb|kind| indicates the kind of region causing the wait. 
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_begin| when a task starts waiting in a barrier region, taskwait region, or taskgroup region.
+   The OpenMP runtime invokes this callback with the \lstinline|endpoint=|\lstinline|ompt_scope_end| when the task stops waiting in the region.
+  This callback has type signature \lstinline|ompt_scoped_sync_region_callback_t|. 
+   The argument \lstinline|kind| indicates the kind of region causing the wait. 
    One region may generate multiple pairs of begin/end callbacks if another task is scheduled on the thread while the task awaiting completion of the region is stalled.
-   The callback argument \verb|codeptr_ra| may be NULL.
+   The callback argument \lstinline|codeptr_ra| may be NULL.
    This callback executes in the context of the task that encountered the barrier, taskwait, or taskgroup construct. 
-   
+
 \end{description}
 
 \begin{description}
 
-\item \verb|ompt_event_mutex_release| 
+\item \lstinline|ompt_event_mutex_release| 
 
    The OpenMP runtime invokes this callback after a task releases a lock, performs the outermost release of a nest lock, or exits a critical, ordered, 
    or atomic region. 
-   This callback has type signature \verb|ompt_mutex_callback_t|. 
-   The argument \verb|kind| indicates the kind of release. In some runtime implementations, it may be inconvenient to distinguish the kind of mutex (lock, nest lock, 
-   critical region, or atomic region) being released. If so, the runtime may simply report \verb|kind=|\verb|ompt_mutex|. If there is a matching 
-   \verb|ompt_event_mutex_acquire| callback, it should report the same \verb|kind| value. 
-   The \verb|wait_id| parameter identifies the lock or synchronization variable
+   This callback has type signature \lstinline|ompt_mutex_callback_t|. 
+   The argument \lstinline|kind| indicates the kind of release. In some runtime implementations, it may be inconvenient to distinguish the kind of mutex (lock, nest lock, 
+   critical region, or atomic region) being released. If so, the runtime may simply report \lstinline|kind=|\lstinline|ompt_mutex|. If there is a matching 
+   \lstinline|ompt_event_mutex_acquire| callback, it should report the same \lstinline|kind| value. 
+   The \lstinline|wait_id| parameter identifies the lock or synchronization variable
    associated with critical region, atomic region, or ordered section released. This callback executes in the context of the task that performed the release. 
-   
+
    If an atomic region is implemented using a hardware instruction, then an OpenMP runtime may choose never to report a release for the atomic region. 
    However, if an atomic region is implemented  using any mechanism that involves a software protocol that spin waits for a lock or retries hardware primitives
    that can fail, then an OpenMP 
@@ -617,7 +641,7 @@ Since waiting indicates the absence of any activity, a thread will not receive a
    exclusive access to the atomic region.
    Examples of hardware primitives that could fail and require explicit retries include transactions,  
    load-linked/store-conditional, or compare-and-swap.
-   
+
 \end{description}
 
 \subsubsection{Events for Instrumentation-based Measurement Tools (Optional)}
@@ -631,20 +655,22 @@ The following events designed for instrumentation-based tools enable tools to re
 \sloppy
 
 
-\item \verb|ompt_event_task_dependences|
+\item \lstinline|ompt_event_task_dependences|
 
   The OpenMP runtime invokes this callback after an explicit task is created, 
   but before the task begins execution to announce its dependences with respect to data objects. 
-  This callback has type signature \verb|ompt_task_dependences_callback_t|.
-  
-\item \verb|ompt_event_task_dependence_pair|
+  This callback has type signature \lstinline|ompt_task_dependences_callback_t|.
 
-The OpenMP runtime invokes this callback to report a dependence between a producer (\verb|src_task_data|) 
-and a consumer (\verb|sink_task_data|) that blocked execution of the consumer.
+\item \lstinline|ompt_event_task_dependence_pair|
+
+The OpenMP runtime invokes this callback to report a dependence between a producer (\DIFdelbegin \lstinline|-*-src_task_id-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+src_task_data+*+|\DIFaddend ) 
+and a consumer (\DIFdelbegin \lstinline|-*-sink_task_id-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+sink_task_data+*+|\DIFaddend ) that blocked execution of the consumer.
 This callback will occur before the consumer knows that the dependence is satisfied. This may happen early or late.
 Note: this callback is used only to report blocking dependences between sibling tasks whose lifetimes overlap. 
 No callback will occur if a producer task finishes before a consumer task is created.
-This callback has type signature \verb|ompt_task_dependence_callback_t|. 
+This callback has type signature \lstinline|ompt_task_dependence_callback_t|. 
 \end{description}
 
 
@@ -652,18 +678,18 @@ This callback has type signature \verb|ompt_task_dependence_callback_t|.
 
 \begin{description}
 
-\item \verb|ompt_event_worksharing|
+\item \lstinline|ompt_event_worksharing|
 
 \sloppy
-The OpenMP runtime invokes this callback with \verb|endpoint=ompt_scope_begin| after a task encounters a worksharing 
+The OpenMP runtime invokes this callback with \lstinline|endpoint=ompt_scope_begin| after a task encounters a worksharing 
 construct but before the task executes its first unit of work for the worksharing region. 
-The OpenMP runtime invokes this callback with \verb|endpoint=ompt_scope_end| after a task executes 
+The OpenMP runtime invokes this callback with \lstinline|endpoint=ompt_scope_end| after a task executes 
 its last unit of work for a worksharing construct and before the task executes the barrier  for the construct (wait) or the statement following the construct (nowait).
-This callback has type signature \verb|ompt_scoped_worksharing_callback_t|.
-The \verb|wstype| callback argument indicates whether the worksharing construct is a loop, sections, single executor or other participant, 
+This callback has type signature \lstinline|ompt_scoped_worksharing_callback_t|.
+The \lstinline|wstype| callback argument indicates whether the worksharing construct is a loop, sections, single executor or other participant, 
 or workshare.
-The \verb|codeptr_ra| callback argument contains the return address of the call to the OpenMP runtime routine, which relates the worksharing region to the user program,
-may be NULL when \verb|endpoint=|\verb|ompt_scope_end|.
+The \lstinline|codeptr_ra| callback argument contains the return address of the call to the OpenMP runtime routine, which relates the worksharing region to the user program,
+may be NULL when \lstinline|endpoint=|\lstinline|ompt_scope_end|.
 This callback executes in the context of the task that encountered the construct. 
 
 \end{description}
@@ -671,16 +697,16 @@ This callback executes in the context of the task that encountered the construct
 \descheader{Master Blocks}
 
 \begin{description}
- 
-\item \verb|ompt_event_master|
 
-  The OpenMP runtime invokes this callback with \verb|endpoint=ompt_scope_begin| after the implicit task of a master thread encounters a master construct but
+\item \lstinline|ompt_event_master|
+
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=ompt_scope_begin| after the implicit task of a master thread encounters a master construct but
 before the task
   executes the master region. 
-  The OpenMP runtime invokes this callback with \verb|endpoint=ompt_scope_end| after the implicit task of a master thread executed a master region 
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=ompt_scope_end| after the implicit task of a master thread executed a master region 
  but before the task executes the statement
   following the master construct. 
-  This callback has type signature \verb|ompt_scoped_master_callback_t|. 
+  This callback has type signature \lstinline|ompt_scoped_master_callback_t|. 
   This callback executes in the context of
   the implicit task of a team's  master thread.
 
@@ -691,30 +717,30 @@ before the task
 \begin{description}
 
 \begin{comment}
-\item \verb|ompt_event_target_data_begin|
+\item \lstinline|ompt_event_target_data_begin|
 
   The OpenMP runtime invokes this callback after a task encounters a target data construct but before the new data environment is created.
   The callback executes in the context of the task that encountered the target data construct. 
-  This callback has type signature \verb|ompt_target_data_callback_t|. Arguments to the callback include the encountering task, the  
+  This callback has type signature \lstinline|ompt_target_data_callback_t|. Arguments to the callback include the encountering task, the  
   target device, and the return address of the call to the runtime routine performing the target data operation, which relates the operation to 
   the user program. 
-  
-\item \verb|ompt_event_target_data_end|
+
+\item \lstinline|ompt_event_target_data_end|
 
   The OpenMP runtime invokes this callback when the task that encountered the target data region is 
   done with the target data region. 
-  This callback has type signature \verb|ompt_task_callback_t|.
+  This callback has type signature \lstinline|ompt_task_callback_t|.
   The callback executes in the context of the task that encountered the target data construct.
 \end{comment}
 
-\item \verb|ompt_event_target_data_map|
+\item \lstinline|ompt_event_target_data_map|
 
-  The OpenMP runtime invokes this callback when a set of \verb|nitems| variables is mapped to or unmapped from the device data environment by a target, target data, 
+  The OpenMP runtime invokes this callback when a set of \lstinline|nitems| variables is mapped to or unmapped from the device data environment by a target, target data, 
   target enter data or target exit data construct. 
-  This callback has type signature \verb|ompt_target_data_map_callback_t|. 
-  The callback argument \verb|target_id| indicates the instance of the target construct associated with this operation.
-  The callback arguments \verb|host_addr|, \verb|device_addr|,  \verb|bytes|,  and \verb|mapping_flags| are arrays that describe data items mapped or unmapped.
-  Elements of the \verb|mapping_flags| array are bit vectors whose bits correspond to items in the enum \verb|ompt_target_map_flag_t|.
+  This callback has type signature \lstinline|ompt_target_data_map_callback_t|. 
+  The callback argument \lstinline|target_id| indicates the instance of the target construct associated with this operation.
+  The callback arguments \lstinline|host_addr|, \lstinline|device_addr|,  \lstinline|bytes|,  and \lstinline|mapping_flags| are arrays that describe data items mapped or unmapped.
+  Elements of the \lstinline|mapping_flags| array are bit vectors whose bits correspond to items in the enum \lstinline|ompt_target_map_flag_t|.
   The callback executes in the context of the encountering task.
 
 \end{description}
@@ -722,17 +748,17 @@ before the task
 \descheader{Barrier, Taskwait, and Taskgroup}
 
 \begin{description}
- 
-\item \verb|ompt_event_sync_region|
+
+\item \lstinline|ompt_event_sync_region|
 
  \sloppy
-  The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| before a task
+  The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_begin| before a task
   begins execution of a barrier region, taskwait region, or taskgroup region. 
-   The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_end| before the task exits the synchronization region. 
- This callback has type signature \verb|ompt_scoped_sync_region_callback_t|. 
-  The argument \verb|kind| indicates the kind of synchronization region: barrier, taskwait, or taskgroup.
-  The \verb|codeptr_ra| callback argument, which represents the return address of a call to an OpenMP runtime routine implementing the synchronization region,
-  may be NULL when \verb|endpoint=|\verb|ompt_scope_end|.
+   The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_end| before the task exits the synchronization region. 
+ This callback has type signature \lstinline|ompt_scoped_sync_region_callback_t|. 
+  The argument \lstinline|kind| indicates the kind of synchronization region: barrier, taskwait, or taskgroup.
+  The \lstinline|codeptr_ra| callback argument, which represents the return address of a call to an OpenMP runtime routine implementing the synchronization region,
+  may be NULL when \lstinline|endpoint=|\lstinline|ompt_scope_end|.
   This callback executes in the context of the task that encountered the synchronization construct.
 
 \end{description}
@@ -741,25 +767,25 @@ before the task
 
 \begin{description}
 
-\item \verb|ompt_event_init_lock|
- 
+\item \lstinline|ompt_event_init_lock|
+
    The OpenMP runtime invokes this callback just after a
    task initializes a lock or nest lock.  This callback executes in the
    context of the task that called a lock initialization routine.
-   This callback has type signature \verb|ompt_lock_init_callback_t|. 
-   The callback argument \verb|is_nest_lock| indicates the type of lock being initialized.
-   The callback argument \verb|wait_id| identifies the lock. 
-   The \verb|hint| parameter is the lock hint value passed to a hinted lock initialization routine.
-   The \verb|kind| parameter is a small integer indicating the lock implementation chosen by the OpenMP runtime. 
-   The mapping between values of \verb|kind| and the lock implementations they represent can be determined using 
-   \verb|ompt_enumerate_mutex_kinds|. 
+   This callback has type signature \lstinline|ompt_lock_init_callback_t|. 
+   The callback argument \lstinline|is_nest_lock| indicates the type of lock being initialized.
+   The callback argument \lstinline|wait_id| identifies the lock. 
+   The \lstinline|hint| parameter is the lock hint value passed to a hinted lock initialization routine.
+   The \lstinline|kind| parameter is a small integer indicating the lock implementation chosen by the OpenMP runtime. 
+   The mapping between values of \lstinline|kind| and the lock implementations they represent can be determined using 
+   \lstinline|ompt_enumerate_mutex_kinds|. 
 
-\item \verb|ompt_event_destroy_lock|
- 
+\item \lstinline|ompt_event_destroy_lock|
+
    The OpenMP runtime invokes this callback just before a
    task destroys a lock or nest lock.  
-   This callback has type signature \verb|ompt_lock_destroy_callback_t|. 
-   The callback argument \verb|wait_id| identifies the lock. 
+   This callback has type signature \lstinline|ompt_lock_destroy_callback_t|. 
+   The callback argument \lstinline|wait_id| identifies the lock. 
    This callback executes in the context of the task that called a lock destruction routine.
 
 \end{description}
@@ -769,38 +795,38 @@ before the task
 
 \begin{description}
 
-\item \verb|ompt_event_mutex_acquire| 
+\item \lstinline|ompt_event_mutex_acquire| 
 
 \sloppy
    The OpenMP runtime invokes this callback when a task invokes
-    \verb|omp_set_lock| to acquire a lock, invokes \verb|omp_set_nest_lock| to acquire a nest lock not already owned,
+    \lstinline|omp_set_lock| to acquire a lock, invokes \lstinline|omp_set_nest_lock| to acquire a nest lock not already owned,
    or encounters a critical, atomic, or ordered construct. 
-   This callback has type signature \verb|ompt_mutex_acquire_callback_t|. 
-    The callback argument \verb|kind| indicates the kind of mutex being acquired.
-    The callback argument \verb|hint| is the implementation hint value specified for a (nest) lock, critical, or atomic construct.
-    If no hint is available, e.g., for ordered constructs, \verb|hint=omp_hint_unknown|.
-   The callback argument \verb|impl| indicates the implementation choice associated with a lock, nest lock, critical, or atomic, or ordered.
-   The callback argument \verb|wait_id| identifies the (nest) lock, a critical construct's associated $name$ or synchronization variable, the program variable or synchronization variable associated with the atomic construct, or the synchronization variable associated with the ordered construct.
-   This callback executes in the context of the task that called \verb|omp_set_lock| or \verb|omp_set_nest_lock| or encountered the
+   This callback has type signature \lstinline|ompt_mutex_acquire_callback_t|. 
+    The callback argument \lstinline|kind| indicates the kind of mutex being acquired.
+    The callback argument \lstinline|hint| is the implementation hint value specified for a (nest) lock, critical, or atomic construct.
+    If no hint is available, e.g., for ordered constructs, \lstinline|hint=omp_hint_unknown|.
+   The callback argument \lstinline|impl| indicates the implementation choice associated with a lock, nest lock, critical, or atomic, or ordered.
+   The callback argument \lstinline|wait_id| identifies the (nest) lock, a critical construct's associated $name$ or synchronization variable, the program variable or synchronization variable associated with the atomic construct, or the synchronization variable associated with the ordered construct.
+   This callback executes in the context of the task that called \lstinline|omp_set_lock| or \lstinline|omp_set_nest_lock| or encountered the
    critical, atomic, or ordered construct.
 
-\item \verb|ompt_event_mutex_acquired| 
+\item \lstinline|ompt_event_mutex_acquired| 
 
    The OpenMP runtime invokes this callback just after the task acquires a (nest) lock or enters a critical, atomic, or ordered region.
-   This callback has type signature \verb|ompt_mutex_callback_t|. 
-   The callback argument \verb|kind| indicates the kind of mutex being acquired.
-   The callback argument \verb|wait_id| identifies the (nest) lock, a critical construct's associated $name$ or synchronization variable, or the program variable or synchronization variable associated with the atomic construct, or the synchronization variable associated with the ordered construct.
-   This callback executes in the context of the task that called \verb|omp_set_lock| or \verb|omp_set_nest_lock| or encountered the
+   This callback has type signature \lstinline|ompt_mutex_callback_t|. 
+   The callback argument \lstinline|kind| indicates the kind of mutex being acquired.
+   The callback argument \lstinline|wait_id| identifies the (nest) lock, a critical construct's associated $name$ or synchronization variable, or the program variable or synchronization variable associated with the atomic construct, or the synchronization variable associated with the ordered construct.
+   This callback executes in the context of the task that called \lstinline|omp_set_lock| or \lstinline|omp_set_nest_lock| or encountered the
    critical or atomic construct.
 
-\item \verb|ompt_event_nested_lock|
+\item \lstinline|ompt_event_nested_lock|
 
 \sloppy
-   The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_begin| if a task begins to acquire a nest lock that is already owned by a task.
-   The OpenMP runtime invokes this callback with \verb|endpoint=|\verb|ompt_scope_end|  just after a task completes the nested acquisition.
-   This callback  has type signature \verb|ompt_scoped_nested_lock_callback_t|. 
+   The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_begin| if a task begins to acquire a nest lock that is already owned by a task.
+   The OpenMP runtime invokes this callback with \lstinline|endpoint=|\lstinline|ompt_scope_end|  just after a task completes the nested acquisition.
+   This callback  has type signature \lstinline|ompt_scoped_nested_lock_callback_t|. 
    This callback executes in the context of the task that called an OMP API routine to set or unset a nest lock; its
-   callback argument \verb|wait_id| identifies the nest lock.
+   callback argument \lstinline|wait_id| identifies the nest lock.
 
 \end{description}
 
@@ -808,12 +834,12 @@ before the task
 
 \begin{description}
 
-\item \verb|ompt_event_flush|
+\item \lstinline|ompt_event_flush|
 
  \sloppy
    The OpenMP runtime invokes this callback just after
    performing a flush operation.  
-   This callback has type signature \verb|ompt_flush_callback_t|. 
+   This callback has type signature \lstinline|ompt_flush_callback_t|. 
    This callback executes in the context of the task that encountered the flush construct.
 \end{description}
 
@@ -821,132 +847,148 @@ before the task
 \label{sec:data}
 
 \subsection{Thread Identifier}
-  Each OpenMP thread has an associated identifier of type \verb|ompt_thread_data_t|. 
+  Each OpenMP thread has an associated identifier of type \DIFdelbegin \lstinline|-*-ompt_thread_id_t-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+ompt_thread_data_t+*+|\DIFaddend . 
 \begin{comment}
 \begin{quote}
-\begin{verbatim}
-typedef uint64_t ompt_thread_data_t;
-\end{verbatim}
-\end{quote}
+\begin{lstlisting}
+-*-typedef uint64_t ompt_thread_id_t;-*-
++*+typedef uint64_t ompt_thread_data_t;+*+\end{lstlisting} \end{quote}
 \end{comment}
-  On thread creation, the runtime library initializes the thread identifier to 0.
+  \DIFdelbegin \DIFdel{A thread 's identifier is assigned when the thread is created}\DIFdelend \DIFaddbegin \DIFadd{On thread creation, the runtime library initializes the thread identifier to 0.
   For thread related events, the runtime library provides the address to the 
-  identifier, so that the tool can write to the identifier's fields.
-  Identifiers assigned to threads on each device keep the stored value from the 
-  creation to the end of a thread.
-  A thread identifier can be retrieved on demand by invoking the  \verb|ompt_get_thread_data|   
-  function (described in Section~\ref{sec:thread-inquiry}).
-  The value \verb|ompt_thread_data_none| is reserved to indicate an invalid thread id.
+  identifier, so that the tool can write to the identifier's fields}\DIFaddend .
+  Identifiers assigned to threads on each device \DIFdelbegin \DIFdel{are unique from the 
+  time an OpenMP runtime is initialized until it is shut down}\DIFdelend \DIFaddbegin \DIFadd{keep the stored value from the 
+  creation to the end of a thread}\DIFaddend .
+  A thread identifier can be retrieved on demand by invoking the  \DIFdelbegin \lstinline|-*-ompt_get_thread_id-*-|   
+%DIFDELCMD <   %%%
+\DIFdelend \DIFaddbegin\lstinline|+*+ompt_get_thread_data+*+|   
+  \DIFaddend function (described in Section~\ref{sec:thread-inquiry}).
+  \DIFdelbegin \DIFdel{Tools should not assume that }\lstinline|-*-ompt_thread_id_t-*-| %%%
+\DIFdel{values are small or densely allocated. 
+  The value }\lstinline|-*-ompt_thread_id_none-*-| %%%
+\DIFdelend \DIFaddbegin \DIFadd{The value }\lstinline|+*+ompt_thread_data_none+*+| \DIFaddend is reserved to indicate an invalid thread id.
 
 \subsection{Parallel Region Identifiers}
   Each OpenMP parallel region has an associated identifier of type
-  \verb|ompt_parallel_data_t|. 
+  \DIFdelbegin \lstinline|-*-ompt_parallel_id_t-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+ompt_parallel_data_t+*+|\DIFaddend . 
 \begin{comment}
 \begin{quote}
-\begin{verbatim}
-typedef uint64_t ompt_parallel_data_t;
-\end{verbatim}
-\end{quote}
+\begin{lstlisting}
+-*-typedef uint64_t ompt_parallel_id_t;-*-
++*+typedef uint64_t ompt_parallel_data_t;+*+\end{lstlisting} \end{quote}
 \end{comment}
 \noindent
-  On begin of a parallel region, the runtime library initializes the parallel region's identifier to 0.
+  \DIFdelbegin \DIFdel{A parallel region}\DIFdelend \DIFaddbegin \DIFadd{On begin of a parallel region, the runtime library initializes the parallel region}\DIFaddend 's identifier \DIFdelbegin \DIFdel{is assigned
+  when the region is created}\DIFdelend \DIFaddbegin \DIFadd{to 0.
   For parallel region related events, the runtime library provides the address to the 
-  identifier, so that the tool can write to the identifier's fields.
-  Identifiers assigned to parallel regions on each device keep the stored value 
-  from the creation to the end of a parallel region.
-  A parallel region identifier can be retrieved for an enclosing parallel region
-  on demand using the function \verb|ompt_get_parallel_info|  (described in Section~\ref{sec:parallel-inquiry}).
-  The value \verb|ompt_parallel_data_none| is reserved to indicate an invalid parallel id.
- 
+  identifier, so that the tool can write to the identifier's fields}\DIFaddend .
+  Identifiers assigned to parallel regions on each device \DIFdelbegin \DIFdel{are unique from the time an 
+  OpenMP runtime is initialized until it is shut down}\DIFdelend \DIFaddbegin \DIFadd{keep the stored value 
+  from the creation to the end of a parallel region}\DIFaddend .
+  A parallel region \DIFdelbegin \DIFdel{identifer }\DIFdelend \DIFaddbegin \DIFadd{identifier }\DIFaddend can be retrieved for an enclosing parallel region
+  on demand using the function \lstinline|ompt_get_parallel_info|  (described in Section~\ref{sec:parallel-inquiry}).
+  \DIFdelbegin \DIFdel{Tools should not assume that }\lstinline|-*-ompt_parallel_id_t-*-| %%%
+\DIFdel{values are small or densely allocated.
+  The value }\lstinline|-*-ompt_parallel_id_none-*-| %%%
+\DIFdelend \DIFaddbegin \DIFadd{The value }\lstinline|+*+ompt_parallel_data_none+*+| \DIFaddend is reserved to indicate an invalid parallel id.
+
  
   \subsection{Task Region Identifiers}
   Each OpenMP task has an associated identifier of type
-  \verb|ompt_task_data_t|. Task identifiers are assigned to
+  \DIFdelbegin \lstinline|-*-ompt_task_id_t-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+ompt_task_data_t+*+|\DIFaddend . Task identifiers are assigned to
    initial, implicit, explicit, and target tasks.
 \begin{comment}
 \begin{quote}
-\begin{verbatim}
-typedef uint64_t ompt_task_data_t;
-\end{verbatim}
-\end{quote}
+\begin{lstlisting}
+-*-typedef uint64_t ompt_task_id_t;-*-
++*+typedef uint64_t ompt_task_data_t;+*+\end{lstlisting} \end{quote}
 \end{comment} 
-  On generation of a task, the runtime library initializes the task's identifier to 0.
+  \DIFdelbegin \DIFdel{A task}\DIFdelend \DIFaddbegin \DIFadd{On generation of a task, the runtime library initializes the task}\DIFaddend 's identifier \DIFdelbegin \DIFdel{is assigned
+  when the task is created}\DIFdelend \DIFaddbegin \DIFadd{to 0.
   For task related events, the runtime library provides the address to the 
-  identifier, so that the tool can write to the identifier's fields.
-  Identifiers assigned to a task on each device keep the stored value 
-  from the generation to the end of a task.
+  identifier, so that the tool can write to the identifier's fields}\DIFaddend .
+  Identifiers assigned to \DIFdelbegin \DIFdel{tasks }\DIFdelend \DIFaddbegin \DIFadd{a task }\DIFaddend on each device \DIFdelbegin \DIFdel{are unique from the time an 
+  OpenMP runtime is initialized until it is shut down}\DIFdelend \DIFaddbegin \DIFadd{keep the stored value 
+  from the generation to the end of a task}\DIFaddend .
   A task's identifier can be retrieved
-  on demand by invoking the \verb|ompt_get_task_info|  function (described in Section~\ref{sec:task-region}).
-  The value \verb|ompt_task_data_none| is reserved to indicate an invalid task identifier.
-  
+  on demand by invoking the \lstinline|ompt_get_task_info|  function (described in Section~\ref{sec:task-region}).
+  \DIFdelbegin \DIFdel{Tools should not assume that }\lstinline|-*-ompt_task_id_t-*-| %%%
+\DIFdel{values are small or densely allocated. 
+  The value }\lstinline|-*-ompt_task_id_none-*-| %%%
+\DIFdelend \DIFaddbegin \DIFadd{The value }\lstinline|+*+ompt_task_data_none+*+| \DIFaddend is reserved to indicate an invalid task identifier.
+
 \subsection{Target Region and Operation Identifiers}
-Each OpenMP target region and target operation has an associated identifier of type \verb|ompt_target_id_t|. 
+Each OpenMP target region and target operation has an associated identifier of type \lstinline|ompt_target_id_t|. 
 A unique target identifier is assigned on the host each time an instance of a target construct is encountered.
 Each operation within a target region, e.g., transferring data to/from a device or launching a kernel launch 
 on a device, is also assigned a unique target identifier. 
 Identifiers assigned to target regions or operations 
 are unique from the time an OpenMP runtime is initialized until it is shut down. 
-The current target region and operation identifiers can be retrieved by invoking the \verb|ompt_get_target_info| function (described in Section~\ref{sec:target-region}).
-Tools should not assume that \verb|ompt_target_id_t| values are small or densely allocated. 
-The value \verb|ompt_target_id_none| is reserved to indicate an invalid target identifier. 
-The value \verb|ompt_target_id_none| will be returned for (a) the target region identifier if \verb|ompt_get_target_info| is invoked outside a target region and (b) the target operation identifier if \verb|ompt_get_target_info| is invoked while no target operation is in progress.
+The current target region and operation identifiers can be retrieved by invoking the \lstinline|ompt_get_target_info| function (described in Section~\ref{sec:target-region}).
+Tools should not assume that \lstinline|ompt_target_id_t| values are small or densely allocated. 
+The value \lstinline|ompt_target_id_none| is reserved to indicate an invalid target identifier. 
+The value \lstinline|ompt_target_id_none| will be returned for (a) the target region identifier if \lstinline|ompt_get_target_info| is invoked outside a target region and (b) the target operation identifier if \lstinline|ompt_get_target_info| is invoked while no target operation is in progress.
 
 \subsection{Wait Identifiers}
-Each thread instance maintains a {\em wait identifier} of type \verb|ompt_wait_id_t|. 
-When a task executing on a thread is waiting for something, the thread's wait identifier indicates what the thread is awaiting. 
+Each thread instance maintains a {\em wait identifier} of type \lstinline|ompt_wait_id_t|. 
+When a task executing on a thread is waiting for something, the thread's wait \DIFdelbegin \DIFdel{identifer }\DIFdelend \DIFaddbegin \DIFadd{identifier }\DIFaddend indicates what the thread is awaiting. 
 A wait identifier may represent a critical section {\em name}, a lock,  a program variable accessed in an atomic region, or a synchronization object internal to an OpenMP runtime implementation. 
 \begin{comment}
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef uint64_t ompt_wait_id_t;
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 \end{comment}
-A thread's wait identifier can be retrieved on demand by invoking the \verb|ompt_get_state| function (described in Section~\ref{sec:thread-inquiry}).
-Tools should not assume that \verb|ompt_wait_id_t| values are small or densely allocated. 
+A thread's wait identifier can be retrieved on demand by invoking the \lstinline|ompt_get_state| function (described in Section~\ref{sec:thread-inquiry}).
+Tools should not assume that \lstinline|ompt_wait_id_t| values are small or densely allocated. 
 When a thread is not in a wait state, a thread's wait identifier has an undefined value.
 %%? Does that mean that the value is undefined and cannot sensibley be read, or that it has a specific value which we have
 %%? defined somewhere, whose name is (something like) ompt_wait_id_undefined  ?
 %%johnmc says: a wait_id typically is set to the address of a lock on which you are spinning. If you aren't spinning on a lock, this value is undefined.
 %%             we could zero it out, but that would cost more.
- 
+
 \subsection{Structure to Support Classification of Stack Frames}
 
   When executing an OpenMP program, at times procedure frames from the OpenMP runtime appear on the call stack between user code procedure frames.
   To enable a tool to classify procedure frames on the call stack as belonging to the user program or the OpenMP runtime,
-  the runtime system maintains an instance of an \verb|ompt_frame_t| data structure 
+  the runtime system maintains an instance of an \lstinline|ompt_frame_t| data structure 
   for each (possibly degenerate) task. A task is considered degenerate if a call to the OpenMP runtime to create a parallel 
   region or task does not create a new task. A degenerate task may arise when a parallel construct is encountered
    in a parallel region and nested parallelism is not enabled or when an orphaned directive that would create a task is encountered outside a parallel region.
   A degenerate task region may add runtime frames to the call stack before 
-  invoking user code for the degenerate task and thus require an \verb|ompt_frame_t| data structure. 
+  invoking user code for the degenerate task and thus require an \lstinline|ompt_frame_t| data structure. 
   To simplify the discussion below, we omit the qualifier ``possibly degenerate'' each time we use the terms {\em task}.
 
-  Each initial, implicit, explicit, or target task maintains an \verb|ompt_frame_t| data structure
+  Each initial, implicit, explicit, or target task maintains an \lstinline|ompt_frame_t| data structure
   that contains a pair of pointers.   
-  
+
 \vbox{    
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef struct ompt_frame_s {
     void *exit_frame;  /* runtime frame that calls user code */
     void *enter_frame; /* user frame that calls the runtime  */
 } ompt_frame_t;
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 }
 
 \noindent
-  An \verb|ompt_frame_t|'s  lifetime begins when a task  is
+  An \lstinline|ompt_frame_t|'s  lifetime begins when a task  is
   created and ends when the task is destroyed.  Tools should not assume that a frame structure remains at a constant location in memory
   throughout a task's lifetime.
   Frame data is passed to some callbacks; it can also be retrieved
   asynchronously
-  by invoking the \verb|ompt_get_task_info|  function (described in Section~\ref{sec:task-region}) in a signal handler.
+  by invoking the \lstinline|ompt_get_task_info|  function (described in Section~\ref{sec:task-region}) in a signal handler.
   Frame data contains two components:
 
 \begin{description}
-\item \verb|exit_frame|
+\item \lstinline|exit_frame|
      This value is set before the OpenMP runtime invokes a procedure containing user code. 
 %%? This description is misleading IMO. Surely this field contains the *value* of the user frame pointer. 
 %%? It doesn't point to the user frame pointer, but to the user frame itself. 
@@ -957,8 +999,8 @@ typedef struct ompt_frame_s {
      For compilers that generate code where the master thread for a parallel region invokes user code directly (e.g., older versions of GNU compilers), 
      this may point to a frame of user code for the enclosing task.
      This value is NULL until just before the runtime invokes a procedure containing user code. 
-  
-\item \verb|enter_frame|
+
+\item \lstinline|enter_frame|
      This value is set each time the current task re-enters the 
      runtime to create a new implicit, explicit, or target task region. This field 
 %%? And here too
@@ -986,11 +1028,11 @@ exit = defined 	& non-initial task in (or soon to be in) user code							& non-i
 
 \noindent
 Table~\ref{tab:frame} describes the meaning of this structure with various values.
-In the presence of nested parallelism, a tool may observe a sequence of \verb|ompt_frame_t| records for a thread. Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| records with nested parallelism.
+In the presence of nested parallelism, a tool may observe a sequence of \lstinline|ompt_frame_t| records for a thread. Appendix~\ref{app:frame} discusses  an example that illustrates the use of \lstinline|ompt_frame_t| records with nested parallelism.
 
 \paragraph{Advice to tool implementers:} A monitoring tool using
       asynchronous sampling can observe values of 
-      \verb|exit_frame| and \verb|enter_frame| at inconvenient times. 
+      \lstinline|exit_frame| and \lstinline|enter_frame| at inconvenient times. 
       Tools must be prepared to observe and handle frame exit and reenter values that have not yet been set or reset as the program enters into, or returns from, the runtime. 
 
 \section{Inquiry Functions for Tools}
@@ -998,14 +1040,14 @@ In the presence of nested parallelism, a tool may observe a sequence of \verb|om
 
  Inquiry functions retrieve data from the execution environment for
  the tools. 
- All functions in the inquiry API are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool should obtain pointers to these inquiry functions.
+ All functions in the inquiry API are marked with \lstinline|OMPT_API|. These functions should not be global symbols in an OpenMP runtime implementation to avoid tempting tool developers to call them directly. Section~\ref{sec:init} describes how a tool should obtain pointers to these inquiry functions.
  {\em All inquiry functions are async signal safe.} 
  Note that it is unsafe to call OpenMP Execution Environment Routines within an OMPT callback because doing so may cause deadlock. 
  Specifically, since OpenMP Execution Library Routines are not guaranteed to be async signal safe, they might acquire a lock that may already be held when an OMPT callback is involved.
- 
+
  \subsection{Enumerate States}
  \label{ompt_enumerate_states}
- 
+
  The OpenMP runtime is allowed to support other states in addition to those described in this document.
 For instance, a particular runtime system may want to 
 provide more detail about the nature of runtime overhead, 
@@ -1015,148 +1057,155 @@ To enable a tool to identify all states that an OpenMP runtime implements, OMPT 
 the following interface for enumerating all states that may be reported by the runtime that is being used.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_enumerate_states(
   omp_state_t current_state, 
   omp_state_t *next_state, 
   const char **next_state_name
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \noindent
 To begin enumerating the states that a runtime system supports,
-the value \verb|omp_state_undefined| should be supplied for \verb|current_state| in the call to \verb|ompt_enumerate_states| that begins the enumeration.
-The argument \verb|next_state| is a pointer to an \verb|omp_state_t| that will be set to the code for the next state in the enumeration.
-The argument \verb|next_state_name| is a pointer to a location that will be filled in with a pointer to the name associated with \verb|next_state|. 
-Subsequent invocations of \verb|ompt_enumerate_states| should pass the code returned in \verb|next_state| by the prior call.
-Whenever one or more states are left in the enumeration, \verb|ompt_enumerate_states| will return \verb|true|.
-When the last state in the enumeration is passed to \verb|ompt_enumerate_states| as \verb|current_state|, the function will return \verb|false| indicating that the enumeration is complete.
+the value \lstinline|omp_state_undefined| should be supplied for \lstinline|current_state| in the call to \lstinline|ompt_enumerate_states| that begins the enumeration.
+The argument \lstinline|next_state| is a pointer to an \lstinline|omp_state_t| that will be set to the code for the next state in the enumeration.
+The argument \lstinline|next_state_name| is a pointer to a location that will be filled in with a pointer to the name associated with \lstinline|next_state|. 
+Subsequent invocations of \lstinline|ompt_enumerate_states| should pass the code returned in \lstinline|next_state| by the prior call.
+Whenever one or more states are left in the enumeration, \lstinline|ompt_enumerate_states| will return \lstinline|true|.
+When the last state in the enumeration is passed to \lstinline|ompt_enumerate_states| as \lstinline|current_state|, the function will return \lstinline|false| indicating that the enumeration is complete.
 An example of how to enumerate the states supported by an OpenMP runtime is shown below:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 omp_state_t state = omp_state_undefined;
 const char *state_name;
 while (ompt_enumerate_states(state, &state, &state_name)) {
   // tool notes that the runtime supports omp_state_t "state" 
   // associated with "state_name" 
 }
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
  \subsection{Enumerate Mutex Implementations}
  \label{ompt_enumerate_mutex_kinds}
- 
+
 The OpenMP standard recognizes that a runtime system may implement locks, nest locks, critical sections, and atomic regions in several different ways. For that reason, a user program can provide hints to help the runtime system to select appropriate implementations.
-When a lock or nest lock is initialized, the \verb|ompt_event_init_lock| callback receives the argument \verb|kind|---a small integer that indicates the lock implementation chosen by the OpenMP runtime. Similarly,  the \verb|ompt_event_mutex_acquire| callback receives the argument \verb|kind| to indicate 
+When a lock or nest lock is initialized, the \lstinline|ompt_event_init_lock| callback receives the argument \lstinline|kind|---a small integer that indicates the lock implementation chosen by the OpenMP runtime. Similarly,  the \lstinline|ompt_event_mutex_acquire| callback receives the argument \lstinline|kind| to indicate 
 the implementation of a lock, critical section, atomic region, or ordered section. To enable a tool to provide insight into a runtime system's implementation choices, OMPT provides
 the following interface for enumerating the synchronization implementations it employs.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_enumerate_mutex_kinds(
   uint32_t current_kind, 
   uint32_t *next_kind, 
   const char **next_kind_name
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \noindent
 \sloppy
 To begin enumerating the mutex implementations that a runtime  employs, one should supply 
- \verb|ompt_mutex_kind_unknown| as the value for \verb|current_kind| in the first call to \verb|ompt_enumerate_mutex_kinds|.
-The argument \verb|next_kind| is a pointer to an integer that will be set to the code for the next implementation in the enumeration.
-The argument \verb|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the mutex implementation associated with \verb|next_kind|. 
-Each subsequent invocation of \verb|ompt_enumerate_mutex_kinds| should pass the code returned in \verb|next_kind| by the prior call.
-Whenever one or more mutex implementations are left in the enumeration, \verb|ompt_enumerate_mutex_kinds| will return \verb|true|.
-When the last mutex implementation type in the enumeration is passed to \verb|ompt_enumerate_mutex_kinds| as \verb|current_kind|, 
-the function will return \verb|false| indicating that the enumeration is complete.
+ \lstinline|ompt_mutex_kind_unknown| as the value for \lstinline|current_kind| in the first call to \lstinline|ompt_enumerate_mutex_kinds|.
+The argument \lstinline|next_kind| is a pointer to an integer that will be set to the code for the next implementation in the enumeration.
+The argument \lstinline|next_kind_name| is a pointer to a location that will be filled in with a pointer to the name of the mutex implementation associated with \lstinline|next_kind|. 
+Each subsequent invocation of \lstinline|ompt_enumerate_mutex_kinds| should pass the code returned in \lstinline|next_kind| by the prior call.
+Whenever one or more mutex implementations are left in the enumeration, \lstinline|ompt_enumerate_mutex_kinds| will return \lstinline|true|.
+When the last mutex implementation type in the enumeration is passed to \lstinline|ompt_enumerate_mutex_kinds| as \lstinline|current_kind|, 
+the function will return \lstinline|false| indicating that the enumeration is complete.
 An example of how to enumerate the types of mutex implementations supported by an OpenMP runtime is shown below:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 uint32_t kind = ompt_mutex_kind_unknown;
 const char *kind_name;
 while (ompt_enumerate_mutex_kinds(kind, &kind, &kind_name)) {
   // tool notes that the runtime "kind" is associated with "kind_name" 
 }
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 
 \subsection{Thread Inquiry}
 \label{sec:thread-inquiry}
 
-Function \verb|ompt_get_thread_data| returns the address of the thread 
+Function \DIFdelbegin \lstinline|-*-ompt_get_thread_id-*-| %%%
+\DIFdel{returns the }\DIFdelend \DIFaddbegin\lstinline|+*+ompt_get_thread_data+*+| \DIFadd{returns the address of the }\DIFaddend thread 
 identifier for the current thread.
 \begin{quote}
-\begin{verbatim}
-OMPT_API ompt_thread_data_t *ompt_get_thread_data(void);
-\end{verbatim}
-\end{quote}
-If the current thread is unknown to the OpenMP runtime, the function returns NULL.
+\begin{lstlisting}
+-*-OMPT_API ompt_thread_id_t ompt_get_thread_id(void);-*-
++*+OMPT_API ompt_thread_data_t *ompt_get_thread_data(void);+*+\end{lstlisting} \end{quote}
+If the current thread is unknown to the OpenMP runtime, the function returns \DIFdelbegin \lstinline|-*-ompt_thread_id_none-*-|%%%
+\DIFdelend \DIFaddbegin \DIFadd{NULL}\DIFaddend .
 {\em This function is async signal safe.}
 
-Function \verb|ompt_get_state| returns the state of the 
-current thread. If the returned state indicates that the thread is waiting for a lock, nest lock, critical section, atomic region, or ordered region, it will fill in \verb|*wait_id| with the wait identifier associated with the state.  {\em This function is async signal safe.}
+Function \lstinline|ompt_get_state| returns the state of the 
+current thread. If the returned state indicates that the thread is waiting for a lock, nest lock, critical section, atomic region, or ordered region, it will fill in \lstinline|*wait_id| with the wait identifier associated with the state.  {\em This function is async signal safe.}
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API omp_state_t ompt_get_state(
   ompt_wait_id_t *wait_id       
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
- 
+
 \subsection{Parallel Region Inquiry} 
 \label{sec:parallel-inquiry} 
-Function \verb|ompt_get_parallel_info| returns information about the parallel region, if any, at the specified ancestor level in the current execution context.
+Function \lstinline|ompt_get_parallel_info| returns information about the parallel region, if any, at the specified ancestor level in the current execution context.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_get_parallel_info(
   int ancestor_level,
-  ompt_parallel_data_t **parallel_data, 
+-*-  ompt_parallel_id_t *parallel_id, -*-
++*+  ompt_parallel_data_t **parallel_data, +*+
   int *team_size
-);
-\end{verbatim}
-\end{quote}
+);\end{lstlisting} \end{quote}
 
 \noindent 
 Ancestor level 0 refers to the current parallel region; 
 information about enclosing parallel regions may be obtained using higher ancestor levels. 
-Function \verb|ompt_get_parallel_info| returns a Boolean, which indicates whether there is a parallel region at the specified ancestor level.
-The function results \verb|*parallel_data| and \verb|*team_size| indicate properties of the parallel region at the specified ancestor level.
-If there is no enclosing parallel region at the specified ancestry level, the address provided in \verb|*parallel_data| is NULL and the value of \verb|*team_size| is undefined.
+Function \lstinline|ompt_get_parallel_info| returns a Boolean, which indicates whether there is a parallel region at the specified ancestor level.
+The function results \DIFdelbegin \lstinline|-*-*parallel_id-*-| %%%
+\DIFdelend \DIFaddbegin\lstinline|+*+*parallel_data+*+| \DIFaddend and \lstinline|*team_size| indicate properties of the parallel region at the specified ancestor level.
+If there is no enclosing parallel region at the specified ancestry level, the \DIFdelbegin \DIFdel{value of }\lstinline|-*-*parallel_id-*-| %%%
+\DIFdel{is }\lstinline|-*-ompt_parallel_id_none-*-| %%%
+\DIFdelend \DIFaddbegin \DIFadd{address provided in }\lstinline|+*+*parallel_data+*+| \DIFadd{is NULL }\DIFaddend and the value of \lstinline|*team_size| is undefined.
 {\em This function is async signal safe.}
- 
+
 \subsection{Task Region Inquiry}
 \label{sec:task-region}
 
-Function \verb|ompt_get_task_info| provides information about the task, if any, at the specified ancestor level in the current execution context.
+Function \lstinline|ompt_get_task_info| provides information about the task, if any, at the specified ancestor level in the current execution context.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_get_task_info(
   int ancestor_level,
   ompt_task_type_t *type,
-  ompt_task_data_t **task_data,
+-*-  ompt_task_id_t *task_id,-*-
++*+  ompt_task_data_t **task_data,+*+
   ompt_frame_t **task_frame,
-  ompt_parallel_data_t **par_data
-);
-\end{verbatim}
-\end{quote}
+-*-  ompt_parallel_id_t *par_id-*-
++*+  ompt_parallel_data_t **par_data+*+
+);\end{lstlisting} \end{quote}
 \noindent
 Ancestor level 0 refers to the current task; information about ancestor tasks in the current execution context may be queried at higher ancestor levels. 
-Function \verb|ompt_get_task_info| returns a Boolean, which indicates whether there is a task at the specified ancestor level.
+Function \lstinline|ompt_get_task_info| returns a Boolean, which indicates whether there is a task at the specified ancestor level.
 {\em This function is async signal safe.} 
 
 A task may be of type initial, implicit, explicit,  target, or degenerate. 
-If the task at the specified level is degenerate, the address returned in \verb|*task_data| will NULL. 
+If the task at the specified level is degenerate, the \DIFdelbegin \DIFdel{value returned in }\lstinline|-*-task_id-*-| %%%
+\DIFdel{will be }\lstinline|-*-ompt_task_id_none-*-|%%%
+\DIFdelend \DIFaddbegin \DIFadd{address returned in }\lstinline|+*+*task_data+*+| \DIFadd{will NULL}\DIFaddend . 
 A degenerate task will be associated with the enclosing parallel region. 
-If the thread invoking this function is outside any parallel region, the address returned in \verb|*par_data| will be NULL.
+If the thread invoking this function is outside any parallel region, the \DIFdelbegin \DIFdel{value returned in }\lstinline|-*-par_id-*-| %%%
+\DIFdel{will be }\lstinline|-*-ompt_parallel_id_none-*-|%%%
+\DIFdelend \DIFaddbegin \DIFadd{address returned in }\lstinline|+*+*par_data+*+| \DIFadd{will be NULL}\DIFaddend .
 
 \begin{comment}
 \begin{table}
@@ -1174,41 +1223,41 @@ depth & meaning\\\hline
 \end{table}
 \end{comment}
 
-Using values inside  \verb|ompt_frame_t| objects returned by calls to  \verb|ompt_get_task_info|, a tool can analyze  frames in the call stack and identify ones that exist on behalf of the runtime system.\footnote{A frame on the call stack is said to exist on behalf of an OpenMP runtime if it is a frame for a runtime system routine, or if it belongs to a library function called by a runtime system routine, directly or indirectly.} 
+Using values inside  \lstinline|ompt_frame_t| objects returned by calls to  \lstinline|ompt_get_task_info|, a tool can analyze  frames in the call stack and identify ones that exist on behalf of the runtime system.\footnote{A frame on the call stack is said to exist on behalf of an OpenMP runtime if it is a frame for a runtime system routine, or if it belongs to a library function called by a runtime system routine, directly or indirectly.} 
 This capability enables a tool to map from an implementation-level view of the call stack back to a source-level view that is easier for application developers to understand. 
-Appendix~\ref{app:frame} discusses  an example that illustrates the use of \verb|ompt_frame_t| objects with multiple threads and nested parallelism.
+Appendix~\ref{app:frame} discusses  an example that illustrates the use of \lstinline|ompt_frame_t| objects with multiple threads and nested parallelism.
 
 \subsection{Target Region Inquiry}
 \label{sec:target-region}
 
-Function \verb|ompt_get_target_info| provides the identifier for a thread's current target region and target operation id, if any.
+Function \lstinline|ompt_get_target_info| provides the identifier for a thread's current target region and target operation id, if any.
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_get_target_info(
   ompt_target_id_t *target_id,                      /* target region id           */
   ompt_target_id_t *host_op_id                      /* host side ID for operation */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-This function returns \verb|false| if the thread invoking it is
+This function returns \lstinline|false| if the thread invoking it is
 outside a target region. In that case, the values of both of its
-returned parameters are undefined. If \verb|ompt_get_target_info|
-returns \verb|true|, the value for \verb|*host_op_id| will be
-\verb|ompt_target_id_none| if the thread invoking it is not in the process of initiating an operation on a target (e.g., copying data to or from an accelerator or launching a kernel).  {\em This function is async signal safe.}
+returned parameters are undefined. If \lstinline|ompt_get_target_info|
+returns \lstinline|true|, the value for \lstinline|*host_op_id| will be
+\lstinline|ompt_target_id_none| if the thread invoking it is not in the process of initiating an operation on a target (e.g., copying data to or from an accelerator or launching a kernel).  {\em This function is async signal safe.}
 
 \subsection{Target Device Inquiry}
 \label{sec:target-device}
-Function \verb|ompt_get_num_devices| returns the number of visible devices:
+Function \lstinline|ompt_get_num_devices| returns the number of visible devices:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API int ompt_get_num_devices(void);
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 This inquiry function is only supported on the host. If the inquiry function is invoked by a thread not executing in the scope of a {\tt target}, {\tt target data}, or {\tt target update} construct, the return value is undefined. {\it This function is async signal safe.}
 
-Function \verb|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about the attached device with  index \verb|device_id|. 
+Function \lstinline|ompt_get_device_info|, whose type signature is shown below, is used to acquire information about the attached device with  index \lstinline|device_id|. 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API _Bool ompt_target_get_device_info(
   int32_t device_id, 
   const char **type, 
@@ -1216,17 +1265,17 @@ OMPT_API _Bool ompt_target_get_device_info(
   ompt_function_lookup_t *lookup,
   const char **documentation
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-If \verb|device_id| refers to a valid device, the function will return \verb|true| indicating success; otherwise, it will return \verb|false| and the values of its return parameters are undefined. The runtime will set \verb|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of the specific device. The OpenMP runtime will set \verb|*device| to point to an opaque object that represents the target device instance. The device pointer returned will need to be supplied as an argument to calls to device-specific functions in the target interface to identify the device being addressed.
+If \lstinline|device_id| refers to a valid device, the function will return \lstinline|true| indicating success; otherwise, it will return \lstinline|false| and the values of its return parameters are undefined. The runtime will set \lstinline|*type| to point to a character string that identifies at a minimum the  type of the device. It might also indicate the software stack it is running and perhaps even the version number of one or more components in that stack. An example string could be ``NVIDIA Tesla M2050, compute capability 2.0, CUDA 5.5.'' A tool can use such a type string to determine if it has any special knowledge about hardware and software of the specific device. The OpenMP runtime will set \lstinline|*device| to point to an opaque object that represents the target device instance. The device pointer returned will need to be supplied as an argument to calls to device-specific functions in the target interface to identify the device being addressed.
 
-The OpenMP runtime will set the value of \verb|*lookup| to point to a function that can be used to look up device-specific API functions.  The \verb|lookup| function for a device will enable a tool to look up all functions marked \verb|OMPT_TARG_API|.  If a named function is not available in an OpenMP runtime's implementation of OMPT, lookup will return NULL. Documentation for the names and type signatures of any additional device-specific API functions available through \verb|lookup| should be provided in the form of a single character string \verb|*documentation|. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the device-specific API or pointers to external documentation.
+The OpenMP runtime will set the value of \lstinline|*lookup| to point to a function that can be used to look up device-specific API functions.  The \lstinline|lookup| function for a device will enable a tool to look up all functions marked \lstinline|OMPT_TARG_API|.  If a named function is not available in an OpenMP runtime's implementation of OMPT, lookup will return NULL. Documentation for the names and type signatures of any additional device-specific API functions available through \lstinline|lookup| should be provided in the form of a single character string \lstinline|*documentation|. Ideally, the documentation string should include not only the type signature but also necessary descriptive text for how to use the device-specific API or pointers to external documentation.
 
-Function \verb|ompt_target_get_device_id| returns the device identifier for the active target device:
+Function \lstinline|ompt_target_get_device_id| returns the device identifier for the active target device:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API int ompt_target_get_device_id(void);
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 %%? If you're in a target construct, aren't you executing on the target, not the host? 
 %%johnmc says: there is host code that executes on behalf of a target region as well. this code receives a callback when it is entered. it serves the function
@@ -1236,13 +1285,13 @@ This inquiry function is only supported on the host. If the inquiry function is 
 Host and target devices are typically distinct and run independently. If 
 host and target devices are different hardware components, they may 
 use different clock generators. For this reason,  there may be no common time base for ordering host-side and device-side events.
-Function \verb|ompt_target_get_time|, with the type signature below returns the current time on the specified target device:
+Function \lstinline|ompt_target_get_time|, with the type signature below returns the current time on the specified target device:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API ompt_target_time_t ompt_target_get_time(
   ompt_target_device_t *device                      /* target device handle       */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 This inquiry function can be used
 to acquire information that can be used to align time stamps from the target device with time
@@ -1253,14 +1302,14 @@ stamps from the host or other devices.
 %%? 3) Maybe a code sample suggesting that you do something like
 %%?    Read host time; get target time; read host time; use the mid-host-time for the target time
 
-The function \verb|ompt_target_translate_time| is used to translate a time value obtained from a target device to a corresponding time value on the host. The {\tt double} result for the host time has the same meaning as the {\tt double} returned from \verb|omp_get_wtime|.
+The function \lstinline|ompt_target_translate_time| is used to translate a time value obtained from a target device to a corresponding time value on the host. The {\tt double} result for the host time has the same meaning as the {\tt double} returned from \lstinline|omp_get_wtime|.
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API double ompt_target_translate_time(
   ompt_target_device_t *device,                     /* target device handle       */
   ompt_target_time_t time                           /* time value from device     */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 \noindent
 {\em Advice to tool implementers:} The accuracy of time translations may degrade if they are not performed promptly after a device time value is received if either the host or device vary their clock speeds. Prompt translation of device times to host times is recommended.
@@ -1279,28 +1328,28 @@ Target devices typically operate asynchronously with respect to a host. It may n
 
  Section~\ref{sec:trace-event}  describes how to enable or disable tracing on a target device for specific OMPT events. 
   Section~\ref{sec:trace-event-native}  describes how to enable or disable tracing on a target device for specific native events. Section~\ref{sec:start-stop-recording} describes how to start and stop event tracing on a device. 
-  
-Some functions in the target device tracing control API described in this section are marked with \verb|OMPT_TARG_API|. These represent function pointers that should be obtained from a target device by invoking the \verb|lookup| function (provided by the target  as a return value to function \verb|ompt_target_get_device_info|) and passing it the name of the function of interest.
+
+Some functions in the target device tracing control API described in this section are marked with \lstinline|OMPT_TARG_API|. These represent function pointers that should be obtained from a target device by invoking the \lstinline|lookup| function (provided by the target  as a return value to function \lstinline|ompt_target_get_device_info|) and passing it the name of the function of interest.
 
 
 \subsection{Enabling and Disabling Tracing for OMPT Record Types}
 \label{sec:trace-event}
-A tool uses the function \verb|ompt_target_set_trace_ompt| to enable or disable the recording of trace records for one or more types of OMPT events:
+A tool uses the function \lstinline|ompt_target_set_trace_ompt| to enable or disable the recording of trace records for one or more types of OMPT events:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API int ompt_target_set_trace_ompt(
   ompt_target_device_t *device,                     /* target device handle       */
   _Bool enable,                                     /* enable or disable          */
   ompt_event_t etype                                /* an event type              */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-The argument \verb|device| is a handle to identify the target device whose performance monitoring may be altered by invoking this function. 
-The boolean \verb|enable| indicates whether recording of events of type \verb|rtype| should be enabled or disabled by this invocation.
-Actual record types are specified using positive numbers; an \verb|rtype| of 0 indicates that all record types will be enabled or disabled.
-Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_ompt|. 
-If a single invocation of \verb|ompt_target_set_trace_ompt| is used to enable or disable more than one event (i.e., \verb|rtype|=0), the return code will be 3 if tracing is possible for one or more events but not for others.
+The argument \lstinline|device| is a handle to identify the target device whose performance monitoring may be altered by invoking this function. 
+The boolean \lstinline|enable| indicates whether recording of events of type \lstinline|rtype| should be enabled or disabled by this invocation.
+Actual record types are specified using positive numbers; an \lstinline|rtype| of 0 indicates that all record types will be enabled or disabled.
+Table~\ref{table:record_set} shows the possible return codes for \lstinline|ompt_target_set_trace_ompt|. 
+If a single invocation of \lstinline|ompt_target_set_trace_ompt| is used to enable or disable more than one event (i.e., \lstinline|rtype|=0), the return code will be 3 if tracing is possible for one or more events but not for others.
 \begin{table}
 \centering
 \begin{tabular}{|l|l|}
@@ -1321,23 +1370,23 @@ return code & meaning \\\hline
 
 \subsection{Enabling and Disabling Tracing for Native Record Types}
 \label{sec:trace-event-native}
-A tool uses the function \verb|ompt_target_set_trace_native| to enable or disable the recording of native trace records for a device. This interface is designed for use by a tool with no 
-knowledge about an attached device. If a tool knows how to program a particular attached device, it may opt to invoke native control functions directly using pointers obtained through the \verb|lookup| function associated with the device and described in the \verb|documentation| string that is returned by \verb|ompt_target_get_device_info|.
+A tool uses the function \lstinline|ompt_target_set_trace_native| to enable or disable the recording of native trace records for a device. This interface is designed for use by a tool with no 
+knowledge about an attached device. If a tool knows how to program a particular attached device, it may opt to invoke native control functions directly using pointers obtained through the \lstinline|lookup| function associated with the device and described in the \lstinline|documentation| string that is returned by \lstinline|ompt_target_get_device_info|.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API int ompt_target_set_trace_native(
   ompt_target_device_t *device,                     /* target device handle       */
   _Bool enable,                                     /* enable or disable          */
   uint32_t  flags                                   /* event classes to monitor   */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-The argument \verb|device| is a handle to idenitfy the target device whose performance monitoring may be altered by invoking this function. 
-The boolean \verb|enable| indicates whether recording of events should be enabled or disabled by this invocation.
-The kinds of native device monitoring to enable or disable are specified by \verb|flags|. Each kind of monitoring is specified by a flag bit. Flags can be composed by using logical {\tt or}  to combine enumeration values from type \verb|ompt_native_mon_flags_t|.
-Table~\ref{table:record_set} shows the possible return codes for \verb|ompt_target_set_trace_native|.
-If a single invocation of \verb|ompt_target_set_trace_ompt| is used to enable/disable more than one kind of monitoring, 
+The argument \lstinline|device| is a handle to idenitfy the target device whose performance monitoring may be altered by invoking this function. 
+The boolean \lstinline|enable| indicates whether recording of events should be enabled or disabled by this invocation.
+The kinds of native device monitoring to enable or disable are specified by \lstinline|flags|. Each kind of monitoring is specified by a flag bit. Flags can be composed by using logical {\tt or}  to combine enumeration values from type \lstinline|ompt_native_mon_flags_t|.
+Table~\ref{table:record_set} shows the possible return codes for \lstinline|ompt_target_set_trace_native|.
+If a single invocation of \lstinline|ompt_target_set_trace_ompt| is used to enable/disable more than one kind of monitoring, 
 the return code will be 3 if tracing is possible for one or more kinds of monitoring but not for others.
 
 \subsection{Start and Stop Recording Traces}
@@ -1347,66 +1396,66 @@ To start recording, a tool needs to register a \emph{buffer request} callback th
 
 The \emph{buffer request} callback has the following type signature:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef void (*ompt_target_buffer_request_callback_t) (
   int32_t device_id,
   ompt_target_buffer_t **buffer,
   size_t *bytes
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-As necessary, the OpenMP runtime will asynchronously invoke \verb|ompt_target_buffer_request_callback_t| to request a buffer to store event records for device \verb|device_id|.
-A tool should set \verb|*buffer| to point to a buffer where device events may be recorded and \verb|*bytes| to the length of that buffer.
-A buffer request callback  may set \verb|*bytes| to 0 if it does not want to provide a buffer for any reason. If a callback sets \verb|*bytes| to 0, further recording of events for the device will be disabled until the next invocation of \verb|ompt_target_start_trace|. This will cause the target device to drop future trace records until recording is restarted.
+As necessary, the OpenMP runtime will asynchronously invoke \lstinline|ompt_target_buffer_request_callback_t| to request a buffer to store event records for device \lstinline|device_id|.
+A tool should set \lstinline|*buffer| to point to a buffer where device events may be recorded and \lstinline|*bytes| to the length of that buffer.
+A buffer request callback  may set \lstinline|*bytes| to 0 if it does not want to provide a buffer for any reason. If a callback sets \lstinline|*bytes| to 0, further recording of events for the device will be disabled until the next invocation of \lstinline|ompt_target_start_trace|. This will cause the target device to drop future trace records until recording is restarted.
 
 The \emph{buffer complete} callback has the following type signature: 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef void (*ompt_target_buffer_complete_callback_t) (
   int32_t device_id, 
   const ompt_target_buffer_t *buffer,
   size_t bytes,
   ompt_target_buffer_cursor_t begin
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-A target device triggers a call to \verb|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
-The argument \verb|device_id| indicates the device whose events the buffer contains. The argument \verb|buffer| is the address of a buffer previously allocated by a \emph{buffer request} callback. The argument \verb|bytes| indicates the full size of the buffer. The argument \verb|begin| is an opaque cursor that indicates the position at the beginning of the first record in the buffer.
+A target device triggers a call to \lstinline|ompt_target_buffer_complete_callback_t| when no further records will be recorded in an event buffer and all records written to the buffer are valid. 
+The argument \lstinline|device_id| indicates the device whose events the buffer contains. The argument \lstinline|buffer| is the address of a buffer previously allocated by a \emph{buffer request} callback. The argument \lstinline|bytes| indicates the full size of the buffer. The argument \lstinline|begin| is an opaque cursor that indicates the position at the beginning of the first record in the buffer.
 
 Under normal operating conditions, every event buffer provided to a device by a \emph{buffer request} callback will receive a \emph{buffer complete} callback before the OpenMP runtime shuts down. If an exceptional condition terminates  execution of an OpenMP program, the OpenMP runtime may choose not to provide a \emph{buffer complete} callback for buffers provided to any device.
 
-To start, pause, or stop tracing for a specific target device associated with the handle \verb|device|, 
-a tool calls the functions \verb|ompt_target_start_trace|, \verb|ompt_target_pause_trace|, or \verb|ompt_target_stop_trace| with the following type signatures:
+To start, pause, or stop tracing for a specific target device associated with the handle \lstinline|device|, 
+a tool calls the functions \lstinline|ompt_target_start_trace|, \lstinline|ompt_target_pause_trace|, or \lstinline|ompt_target_stop_trace| with the following type signatures:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API _Bool ompt_target_start_trace(
   ompt_target_device_t *device,                     /* target device handle       */
   ompt_target_buffer_request_callback_t request,    /* fn to request trace buffer */
   ompt_target_buffer_complete_callback_t complete,  /* fn to return trace buffer  */
   ompt_get_target_info_inquiry_t get_info           /* fn to map to host activity */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API _Bool ompt_target_pause_trace(
   ompt_target_device_t *device,                     /* target device handle       */
   _Bool begin_pause                                 /* true=begin, false=end      */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API _Bool ompt_target_stop_trace(
   ompt_target_device_t *device                      /* target device handle       */
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 \noindent
-Each invocation returns \verb|true| if the command succeeded and \verb|false| otherwise.
-A call to \verb|ompt_target_stop_trace| also implicitly requests that the device flush any buffers that it owns.
+Each invocation returns \lstinline|true| if the command succeeded and \lstinline|false| otherwise.
+A call to \lstinline|ompt_target_stop_trace| also implicitly requests that the device flush any buffers that it owns.
 
 %%? johnmc says: we should export one more function from a target device: ompt_target_scope(begin/end, host_id)
 %% this function will be used by the OpenMP runtime when a target device is being monitored to signal the target device when 
@@ -1420,59 +1469,59 @@ A call to \verb|ompt_target_stop_trace| also implicitly requests that the device
 \label{sec:record-data}
 
 There are several routines that need to be used together to process %target 
-event records deposited in a buffer by a device. Function \verb|ompt_target_advance_buffer_cursor|, with the type signature shown below, returns a cursor for the next record in the specified buffer given a cursor for the current record.
+event records deposited in a buffer by a device. Function \lstinline|ompt_target_advance_buffer_cursor|, with the type signature shown below, returns a cursor for the next record in the specified buffer given a cursor for the current record.
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API _Bool ompt_target_advance_buffer_cursor(
   ompt_target_buffer_t *buffer,
   size_t size, 
   ompt_target_buffer_cursor_t current, 
   ompt_target_buffer_cursor_t *next
 ); 
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-It returns \verb|true| if the advance is successful and the returned value \verb|*next| is valid.
+It returns \lstinline|true| if the advance is successful and the returned value \lstinline|*next| is valid.
 
-The function \verb|ompt_target_buffer_get_record_type| allows a tool to inspect the type of a record to determine whether it is a known type  worth processing further. 
+The function \lstinline|ompt_target_buffer_get_record_type| allows a tool to inspect the type of a record to determine whether it is a known type  worth processing further. 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API ompt_record_type_t ompt_target_buffer_get_record_type(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 \sloppy
-\verb|ompt_target_buffer_get_record_type| returns either \verb|ompt_record_ompt| if the record represents a OMPT event,  
-%\verb|ompt_record_correlation| if the purpose of the record is to associate the identifier for a device activity with a host target task id, 
-\verb|ompt_record_native| if the record represents a device native record type that does not represent an OMPT event record, or \verb|ompt_record_invalid| if the cursor is out of bounds. 
+\lstinline|ompt_target_buffer_get_record_type| returns either \lstinline|ompt_record_ompt| if the record represents a OMPT event,  
+%\lstinline|ompt_record_correlation| if the purpose of the record is to associate the identifier for a device activity with a host target task id, 
+\lstinline|ompt_record_native| if the record represents a device native record type that does not represent an OMPT event record, or \lstinline|ompt_record_invalid| if the cursor is out of bounds. 
 
-Appendix~\ref{appendix:ompt-records} defines the corresponding enumeration type for \verb|ompt_record_type_t|. 
+Appendix~\ref{appendix:ompt-records} defines the corresponding enumeration type for \lstinline|ompt_record_type_t|. 
 Section~\ref{sec:native-record-data} describes the interface to use for accessing native record types.
- 
+
 
 To inspect the information for an OMPT record, a tool invokes the following function:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-This function returns a pointer that may point into the record buffer, or it may point into thread local storage where the information extracted from a record was assembled. The information available for an event depends upon its type. For this purpose, Appendix~\ref{appendix:ompt-records} defines a union type that will be used to return information for different OMPT event record types. A subsequent call to \verb|ompt_record_get| may overwrite the contents of the fields in a record returned by a prior invocation.
+This function returns a pointer that may point into the record buffer, or it may point into thread local storage where the information extracted from a record was assembled. The information available for an event depends upon its type. For this purpose, Appendix~\ref{appendix:ompt-records} defines a union type that will be used to return information for different OMPT event record types. A subsequent call to \lstinline|ompt_record_get| may overwrite the contents of the fields in a record returned by a prior invocation.
 
 \begin{comment}
-When a target task begins, it is assigned a task identifier. Each activity, e.g. a kernel invocation, that occurs on a device is assigned a device activity identifier. All device activities can be mapped back to the target task that initiated them.  Multiple device activities may be initiated by one target task; hence the mapping between device activities and target tasks is many to one. The mechanism for relating a device activity back to its associated target task is a correlation record. Correlation records appear among the stream of trace records from a target device. If a trace record is found to be of type \verb|ompt_record_correlation|, then it may be extracted from the trace using the following function:
+When a target task begins, it is assigned a task identifier. Each activity, e.g. a kernel invocation, that occurs on a device is assigned a device activity identifier. All device activities can be mapped back to the target task that initiated them.  Multiple device activities may be initiated by one target task; hence the mapping between device activities and target tasks is many to one. The mechanism for relating a device activity back to its associated target task is a correlation record. Correlation records appear among the stream of trace records from a target device. If a trace record is found to be of type \lstinline|ompt_record_correlation|, then it may be extracted from the trace using the following function:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlation(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 \end{comment}
 
@@ -1480,31 +1529,31 @@ OMPT_TARG_API ompt_record_correlation_t *ompt_target_buffer_get_record_correlati
 \label{sec:native-record-data}
 
 To inspect a native trace record for a device, a tool invokes the following function to obtain a pointer to a trace record in the native format for the device associated with a buffer. \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer, 
   ompt_target_buffer_cursor_t current,
   ompt_target_id_t *host_op_id
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-The pointer returned  may point into the trace buffer, or into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. If the function returns a non-NULL result, it will also set \verb|*host_op_id| to identify host-side identifier for the operation associated with the record.
-A subsequent call to \verb|ompt_target_buffer_get_record_native| may overwrite the contents of the fields in a record returned by a prior invocation.
+The pointer returned  may point into the trace buffer, or into thread local storage where the information extracted from a trace record was assembled. The information available for a native event depends upon its type. If the function returns a non-NULL result, it will also set \lstinline|*host_op_id| to identify host-side identifier for the operation associated with the record.
+A subsequent call to \lstinline|ompt_target_buffer_get_record_native| may overwrite the contents of the fields in a record returned by a prior invocation.
 
-Function  \verb|ompt_target_buffer_get_record_native_abstract| can be
+Function  \lstinline|ompt_target_buffer_get_record_native_abstract| can be
 used by a tool to acquire basic information about a native record 
 so that a tool can process native records for a device even if the
 tool lacks native support for the device. 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_TARG_API ompt_record_native_abstract_t *
 ompt_target_buffer_get_record_native_abstract(
   void *native_record 
 );
 
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-A  \verb|ompt_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The meaning of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. 
+A  \lstinline|ompt_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \lstinline|rclass| field indicates whether the record is informational (\lstinline|ompt_record_native_class_info|) or represents an event (\lstinline|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \lstinline|type| field points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \lstinline|start_time| and \lstinline|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \lstinline|start_time| and/or \lstinline|end_time|, the value of an unavailable field will be the distinguished value \lstinline|ompt_time_none|. The hardware id field, \lstinline|hwid|,  is used to indicate the location on the device where the event occurred. A \lstinline|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The meaning of a \lstinline|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \lstinline|hwid| associated with a record, the value of \lstinline|hwid| shall be \lstinline|ompt_hwid_none|. 
 
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
@@ -1515,18 +1564,18 @@ Section~\ref{sec:init} explains how a registered performance tool initializes it
 \subsection{Tool Registration}
 \label{sec:env}
 
-The  \verb|OMP_TOOL| environment variable sets the {\em omp-tool-var} ICV, which controls whether or not an OpenMP 
-runtime will try to register a performance tool or not. The value assigned to \verb|OMP_TOOL| is 
+The  \lstinline|OMP_TOOL| environment variable sets the {\em omp-tool-var} ICV, which controls whether or not an OpenMP 
+runtime will try to register a performance tool or not. The value assigned to \lstinline|OMP_TOOL| is 
 case insensitive and may have leading and trailing white space.  The value of
-this environment variable must be \verb|enabled| or \verb|disabled|.   If  \verb|OMP_TOOL| is set to any value other than \verb|enabled| or \verb|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \verb|OMP_TOOL| and the program's execution will terminate. If \verb|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \verb|enabled|.
+this environment variable must be \lstinline|enabled| or \lstinline|disabled|.   If  \lstinline|OMP_TOOL| is set to any value other than \lstinline|enabled| or \lstinline|disabled|, an OpenMP runtime will print a fatal error  to the standard error file descriptor indicating that an illegal value had been supplied for \lstinline|OMP_TOOL| and the program's execution will terminate. If \lstinline|OMP_TOOL| is not defined, the default value for  {\em omp-tool-var}  is  \lstinline|enabled|.
 
  \begin{table}
 \begin{center}
 \begin{tabular}{|c|p{4.5in}|}
 \hline
  {\em omp-tool-var} value & action \\\hline
-enabled & the OpenMP runtime will call  \verb|ompt_tool| before initializing itself.   \\\hline
-disabled & the OpenMP runtime will not call  \verb|ompt_tool|, regardless of whether a tool is present or not.  \\\hline
+enabled & the OpenMP runtime will call  \lstinline|ompt_tool| before initializing itself.   \\\hline
+disabled & the OpenMP runtime will not call  \lstinline|ompt_tool|, regardless of whether a tool is present or not.  \\\hline
 \end{tabular}
 \end{center}
 \caption{OpenMP runtime responses to settings of the {\em omp-tool-var} ICV.}
@@ -1535,76 +1584,76 @@ disabled & the OpenMP runtime will not call  \verb|ompt_tool|, regardless of whe
 
 \sloppy
 Table~\ref{table:env-var} describes the action that an OpenMP runtime will take in response to possible values of {\em omp-tool-var}.
-If the value of {\em omp-tool-var}  is  \verb|enabled|, the runtime will attempt to register  a performance tool by calling the function \verb|ompt_tool| before performing  runtime initialization. The signature for  \verb|ompt_tool|  is shown below:
+If the value of {\em omp-tool-var}  is  \lstinline|enabled|, the runtime will attempt to register  a performance tool by calling the function \lstinline|ompt_tool| before performing  runtime initialization. The signature for  \lstinline|ompt_tool|  is shown below:
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 extern "C" {
   ompt_initialize_fn_t ompt_tool(void);
 };
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
- If a tool provides an implementation of \verb|ompt_tool| in the application's address space, it may return NULL indicating that the tool declines to register itself with the runtime; otherwise, the tool  may register itself with the runtime by returning a non-NULL pointer to a function with type signature \verb|ompt_initialize_fn_t|. The type signature for \verb|ompt_initialize_fn_t| is described in Section~\ref{sec:init}. 
-Since only one tool-provided definition of \verb|ompt_tool| will be seen by an OpenMP runtime, only one tool may register itself. 
-If a tool-supplied implementation of \verb|ompt_tool| returns a non-NULL initializer, the OpenMP runtime will maintain state information for each OpenMP thread and will perform OMPT event callbacks registered during tool initialization. 
+ If a tool provides an implementation of \lstinline|ompt_tool| in the application's address space, it may return NULL indicating that the tool declines to register itself with the runtime; otherwise, the tool  may register itself with the runtime by returning a non-NULL pointer to a function with type signature \lstinline|ompt_initialize_fn_t|. The type signature for \lstinline|ompt_initialize_fn_t| is described in Section~\ref{sec:init}. 
+Since only one tool-provided definition of \lstinline|ompt_tool| will be seen by an OpenMP runtime, only one tool may register itself. 
+If a tool-supplied implementation of \lstinline|ompt_tool| returns a non-NULL initializer, the OpenMP runtime will maintain state information for each OpenMP thread and will perform OMPT event callbacks registered during tool initialization. 
 
 After a process fork, if OpenMP is re-initialized in the child process,
-the OpenMP runtime in the child process will call  \verb|ompt_tool| under the same conditions as it would for any process. 
+the OpenMP runtime in the child process will call  \lstinline|ompt_tool| under the same conditions as it would for any process. 
 
 \subsection{Tool Initialization}
 \label{sec:init}
 
-When an OpenMP runtime receives a non-NULL pointer to a tool initializer function with signature \verb|ompt_initialize_fn_t| as the return value from a call to a tool-provided implementation of \verb|ompt_tool|, the runtime will call the tool initializer immediately after the runtime fully initializes itself. The initializer must be called before beginning execution of any OpenMP construct or completing any execution environment  routine invocation.  The signature for the tool initializer callback is shown below:
+When an OpenMP runtime receives a non-NULL pointer to a tool initializer function with signature \lstinline|ompt_initialize_fn_t| as the return value from a call to a tool-provided implementation of \lstinline|ompt_tool|, the runtime will call the tool initializer immediately after the runtime fully initializes itself. The initializer must be called before beginning execution of any OpenMP construct or completing any execution environment  routine invocation.  The signature for the tool initializer callback is shown below:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef void (*ompt_initialize_fn_t) (
   ompt_function_lookup_t lookup,
   const char *runtime_version, 
   unsigned int ompt_version
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
-The second argument to  \verb|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime implementation. Knowing exactly what version of an OpenMP runtime is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
+The second argument to  \lstinline|ompt_initialize| is a version string that unambiguously identifies an OpenMP runtime implementation. This argument is useful to tool developers trying to debug a statically-linked executable that contains both a tool implementation and an OpenMP runtime implementation. Knowing exactly what version of an OpenMP runtime is present in a binary may be helpful when diagnosing a problem, e.g., identifying an old runtime system that may be incompatible with a newer tool.
 
-The third argument \verb|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
+The third argument \lstinline|ompt_version| indicates the version of the OMPT interface supported by a runtime system.
 The version of OMPT described by this document is 2.
 
 The two principal duties of a tool initializer are looking up pointers to all OMPT API functions that the tool uses and registering tool callbacks.  These two operations are described below.
 
-\paragraph{Looking up functions in the OMPT API.} The first argument to \verb|ompt_initialize| is \verb|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to all OMPT interface functions.
-The type signature for  \verb|lookup| is:
+\paragraph{Looking up functions in the OMPT API.} The first argument to \lstinline|ompt_initialize| is \lstinline|lookup|---a callback that a tool must use to interrogate the runtime system to obtain pointers to all OMPT interface functions.
+The type signature for  \lstinline|lookup| is:
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 typedef ompt_interface_fn_t (*ompt_function_lookup_t) (
   const char *interface_function_name
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \noindent
-The \verb|lookup| callback is necessary because, when the OpenMP runtime is dynamically loaded by a shared library, the OMPT interface functions provided by the library may not be visible to a preloaded tool. Within a tool, one uses \verb|lookup| to obtain function pointers to each function in the OMPT API.  All functions in the OMPT API are marked with \verb|OMPT_API|. These functions should not be global symbols in an OpenMP runtime implementation to avoid tempting tool developers to call them directly. 
+The \lstinline|lookup| callback is necessary because, when the OpenMP runtime is dynamically loaded by a shared library, the OMPT interface functions provided by the library may not be visible to a preloaded tool. Within a tool, one uses \lstinline|lookup| to obtain function pointers to each function in the OMPT API.  All functions in the OMPT API are marked with \lstinline|OMPT_API|. These functions should not be global symbols in an OpenMP runtime implementation to avoid tempting tool developers to call them directly. 
 
-Below, we show how to use the \verb|lookup| function to obtain a pointer to the OMPT API function \verb|ompt_get_thread_data|:
+Below, we show how to use the \lstinline|lookup| function to obtain a pointer to the OMPT API function \DIFdelbegin \lstinline|-*-ompt_get_thread_id-*-|%%%
+\DIFdelend \DIFaddbegin\lstinline|+*+ompt_get_thread_data+*+|\DIFaddend :
 
 \begin{quote}
-\begin{verbatim}
-ompt_interface_fn_t ompt_get_thread_data_fn = lookup("ompt_get_thread_data");
-\end{verbatim}
-\end{quote}
+\begin{lstlisting}
+-*-ompt_interface_fn_t ompt_get_thread_id_fn = lookup("ompt_get_thread_id");-*-
++*+ompt_interface_fn_t ompt_get_thread_data_fn = lookup("ompt_get_thread_data");+*+\end{lstlisting} \end{quote}
 Other functions in the OMPT API may be looked up analogously.
-If a named function is not available in an OpenMP runtime's implementation of OMPT, \verb|lookup| will return NULL.
+If a named function is not available in an OpenMP runtime's implementation of OMPT, \lstinline|lookup| will return NULL.
 
 \paragraph{Registering Callbacks.} 
-Tools register callbacks to receive notification of various events that occur as an OpenMP program executes by using the OMPT API function \verb|ompt_set_callback|. The signature for this function is shown below{
- 
+Tools register callbacks to receive notification of various events that occur as an OpenMP program executes by using the OMPT API function \lstinline|ompt_set_callback|. The signature for this function is shown below{
+
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API int ompt_set_callback(
   ompt_event_t event, 
   ompt_callback_t callback
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 }
 
@@ -1624,64 +1673,64 @@ return code & meaning \\\hline
 \end{table}
 
 \noindent
-The  function \verb|ompt_set_callback|  may only be called within the implementation of 
- \verb|ompt_initialize|.
-The possible return codes for \verb|ompt_set_callback| and their meaning is shown in Table~\ref{table:set_rc}. 
+The  function \lstinline|ompt_set_callback|  may only be called within the implementation of 
+ \lstinline|ompt_initialize|.
+The possible return codes for \lstinline|ompt_set_callback| and their meaning is shown in Table~\ref{table:set_rc}. 
 Registration of supported callbacks may fail if this function is
-called outside  \verb|ompt_initialize|.
-The \verb|ompt_callback_t| type for a callback does not reflect the actual signature of the callback; OMPT uses  this generic type 
+called outside  \lstinline|ompt_initialize|.
+The \lstinline|ompt_callback_t| type for a callback does not reflect the actual signature of the callback; OMPT uses  this generic type 
  to avoid the need to declare a separate registration function for each actual callback type.
 
 
-The  OMPT API function \verb|ompt_get_callback| may be called at any time to determine whether a callback has been registered or not. 
+The  OMPT API function \lstinline|ompt_get_callback| may be called at any time to determine whether a callback has been registered or not. 
 
 \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 OMPT_API int ompt_get_callback(
   ompt_event_t event, 
   ompt_callback_t *callback
 );
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \noindent
-If a callback has been registered,  \verb|ompt_get_callback|  will return 1 and set {\tt callback} to the address of the callback function; otherwise \verb|ompt_get_callback| will return 0.
+If a callback has been registered,  \lstinline|ompt_get_callback|  will return 1 and set {\tt callback} to the address of the callback function; otherwise \lstinline|ompt_get_callback| will return 0.
 
 \section{Tool Control for Applications}
 \label{sec:app-facing}
- 
-The OMPT API provides only one application-facing routine:  \verb|ompt_control|. 
-An application may call the function \verb|ompt_control|  to  control tool operation. While tool support for \verb|ompt_control| is optional, the runtime is required to pass a control command to a tool if the tool registered a callback with the \verb|ompt_event_control| event. As an application-facing routine, this function has type signatures for both C and Fortran:
+
+The OMPT API provides only one application-facing routine:  \lstinline|ompt_control|. 
+An application may call the function \lstinline|ompt_control|  to  control tool operation. While tool support for \lstinline|ompt_control| is optional, the runtime is required to pass a control command to a tool if the tool registered a callback with the \lstinline|ompt_event_control| event. As an application-facing routine, this function has type signatures for both C and Fortran:
 
 \vbox{
  \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 C:  
    void ompt_control(uint64_t command, uint64_t modifier);
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 }
 
 \vbox{
  \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 Fortran: 
    subroutine ompt_control(command, modifier)
    integer*8 command, modifier
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 }
 
-\noindent A classic use case for \verb|ompt_control|  is for an application to start and stop data collection by a tool. A tool may allow an application to turn monitoring on and off many times during an execution to monitor only code regions of interest.
-To support this common usage,  the OMPT standard defines four values for \verb|command|:
+\noindent A classic use case for \lstinline|ompt_control|  is for an application to start and stop data collection by a tool. A tool may allow an application to turn monitoring on and off many times during an execution to monitor only code regions of interest.
+To support this common usage,  the OMPT standard defines four values for \lstinline|command|:
 
  \begin{quote}
-\begin{verbatim}
+\begin{lstlisting}
 1: start or restart monitoring
 2: pause monitoring
 3: flush tool buffers 
 4: permanently turn off monitoring
-\end{verbatim}
+\end{lstlisting}
 \end{quote}
 
 \noindent
@@ -1724,7 +1773,7 @@ When OMPT is enabled, an OpenMP runtime will maintain information about the stat
 Below we define an enumeration type that specifies the set of runtime states. 
 The purpose of these states is described in Section~\ref{sec:states}.
 
-\begin{verbatim}
+\begin{lstlisting}
 typedef enum omp_state_e {
   /* idle (0..15) */
   omp_state_idle                   = 0x00, /* waiting for work           */
@@ -1741,7 +1790,7 @@ typedef enum omp_state_e {
   omp_state_wait_barrier           = 0x40, /* generic barrier            */
   omp_state_wait_barrier_implicit  = 0x41, /* implicit barrier           */
   omp_state_wait_barrier_explicit  = 0x42, /* explicit barrier           */
-    
+
   /* task wait states (80..95) */
   omp_state_wait_taskwait          = 0x50, /* waiting at a taskwait      */
   omp_state_wait_taskgroup         = 0x51, /* waiting at a taskgroup     */
@@ -1752,7 +1801,7 @@ typedef enum omp_state_e {
   omp_state_wait_critical          = 0x62, /* waiting for critical       */
   omp_state_wait_atomic            = 0x63, /* waiting for atomic         */
   omp_state_wait_ordered           = 0x64, /* waiting for ordered        */
-  
+
   /* target wait states (112..127) */
   omp_state_wait_target            = 0x70, /* waiting for target         */ 
   omp_state_wait_target_data       = 0x71, /* waiting for target data    */ 
@@ -1761,7 +1810,7 @@ typedef enum omp_state_e {
   /* misc (128..143) */
   omp_state_undefined              = 0x80  /* undefined thread state     */
 } omp_state_t;
-\end{verbatim}
+\end{lstlisting}
 \clearpage
 \subsection{Runtime Event Callbacks}
 \label{appendix:ompt-types:events}
@@ -1771,7 +1820,7 @@ When those events occur during execution, the OpenMP runtime will invoke the reg
 Below we define an enumeration type that specifies the set of event callbacks that may be supported by an OpenMP runtime. 
 The purpose of these callbacks is described in Section~\ref{sec:events}. 
 
-\begin{verbatim}
+\begin{lstlisting}
 typedef enum ompt_event_e {  
   /*--- Mandatory Events ---*/
   ompt_event_thread_begin             = 1,
@@ -1806,32 +1855,36 @@ typedef enum ompt_event_e {
   ompt_event_nested_lock              = 26,
   ompt_event_flush                    = 27
 } ompt_event_t;
-\end{verbatim}
+\end{lstlisting}
 
 \clearpage  
 \subsection{Miscellaneous Type Definitions}
 \label{appendix:ompt-types:misc}
 This section describes miscellaneous enumeration types used by tool callbacks.
 
-\begin{verbatim}
+\begin{lstlisting}
 #define OMPT_API                              /* used to mark OMPT functions obtained from   *
                                                * lookup function passed to ompt_initialize   */ 
-                                             
+
 #define OMPT_TARG_API                         /* used to mark OMPT functions obtained from   *
                                                * lookup function passed to                   *
                                                * ompt_target_get_device_info                 */
-                                             
-typedef uint64_t ompt_id_t;
-typedef union ompt_data_u {
-  ompt_id_t value; /* data initialized by runtime to unique id */
-  void *ptr; /* pointer under tool control */
-} ompt_data_t;
 
-typedef ompt_data_t ompt_thread_data_t;
-typedef ompt_data_t ompt_task_data_t;
-typedef ompt_data_t ompt_parallel_data_t;
-typedef ompt_data_t ompt_target_data_t;
-
+-*-typedef uint64_t ompt_thread_id_t;            /* uniquely identifies a thread                */ -*-
+-*-typedef uint64_t ompt_parallel_id_t;          /* uniquely identifies a parallel region       */-*-
+-*-typedef uint64_t ompt_task_id_t;              /* uniquely identifies a task region           */-*-
+-*-typedef uint64_t ompt_target_id_t;            /* uniquely identifies a target region         */-*-
++*+typedef uint64_t ompt_id_t;+*+
++*+typedef union ompt_data_u {+*+
++*+  ompt_id_t value; /* data initialized by runtime to unique id */+*+
++*+  void *ptr; /* pointer under tool control */+*+
++*+} ompt_data_t;+*+
++*+\PAR+*+
++*+typedef ompt_data_t ompt_thread_data_t;+*+
++*+typedef ompt_data_t ompt_task_data_t;+*+
++*+typedef ompt_data_t ompt_parallel_data_t;+*+
++*+typedef ompt_data_t ompt_target_data_t;+*+
++*+\PAR+*+
 typedef uint64_t ompt_wait_id_t;              /* identifies what a thread is awaiting        */
 typedef void ompt_target_device_t;            /* opaque object representing a target device  */
 typedef uint64_t ompt_target_time_t;          /* raw time value on a device                  */
@@ -1941,24 +1994,25 @@ typedef struct ompt_frame_s {
 #define ompt_dev_task_none            (~0ULL)
 #define ompt_time_none                (~0ULL)
 
-#define ompt_thread_data_none         {.value=0}
-#define ompt_parallel_data_none       {.value=0}
-#define ompt_task_data_none           {.value=0}
+-*-#define ompt_thread_id_none           0-*-
+-*-#define ompt_parallel_id_none         0-*-
+-*-#define ompt_task_id_none             0-*-
++*+#define ompt_thread_data_none         {.value=0}+*+
++*+#define ompt_parallel_data_none       {.value=0}+*+
++*+#define ompt_task_data_none           {.value=0}+*+
 #define ompt_target_id_none           0
 
-#define ompt_mutex_kind_unknown       0
-\end{verbatim}
-\clearpage
+#define ompt_mutex_kind_unknown       0\end{lstlisting} \clearpage
 
 \subsection{Type Signatures for Tool Callbacks}
 \label{appendix:ompt-types:callbacks}
 This section describes type signatures for all  callbacks that a tool may register to receive from an OpenMP runtime. Section~\ref{sec:events} describes OpenMP runtime events and registration of
 callback functions with these type signatures.
 
-The function signature  \verb|ompt_callback_t| defined immediately below is used by the tool callback registration interface as a placeholder for arbitrary callbacks,
+The function signature  \lstinline|ompt_callback_t| defined immediately below is used by the tool callback registration interface as a placeholder for arbitrary callbacks,
  regardless of a callback's actual type signature. This approach avoids the need for a separate registration routine for each unique callback signature. 
 
-\begin{verbatim}
+\begin{lstlisting}
 /* placeholder signature  */
 typedef void (*ompt_callback_t) (    
   void
@@ -1976,11 +2030,13 @@ typedef ompt_interface_fn_t (*ompt_function_lookup_t) (
 /* threads */
 typedef void (*ompt_thread_begin_callback_t) (
   ompt_thread_type_t thread_type,    /* type of thread              */
-  ompt_thread_data_t *thread_data         /* ID of thread                */
+-*-  ompt_thread_id_t thread_id         /* ID of thread                */-*-
++*+  ompt_thread_data_t *thread_data         /* ID of thread                */+*+
 );
 
 typedef void (*ompt_thread_end_callback_t) (
-  ompt_thread_data_t *thread_data         /* ID of thread                */
+-*-  ompt_thread_id_t thread_id         /* ID of thread                */-*-
++*+  ompt_thread_data_t *thread_data         /* ID of thread                */+*+
 );
 
 /* idle */
@@ -1990,63 +2046,78 @@ typedef void (*ompt_idle_callback_t) (
 
 /* parallel regions */
 typedef void (*ompt_parallel_begin_callback_t) (
-  ompt_task_data_t *parent_task_data,/* ID of parent task           */
+-*-  ompt_task_id_t parent_task_id,     /* ID of parent task           */-*-
++*+  ompt_task_data_t *parent_task_data,/* ID of parent task           */+*+
   const ompt_frame_t *parent_frame,  /* frame data of parent task   */
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
   uint32_t requested_team_size,      /* requested number of threads */
   ompt_invoker_t invoker,            /* who invokes master task?    */
   const void *codeptr_ra             /* return address of api call  */ 
 );
 
 typedef void (*ompt_parallel_end_callback_t) (
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
-  ompt_task_data_t *task_data,       /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t task_id,            /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t *task_data,       /* ID of task                  */+*+
   ompt_invoker_t invoker,            /* who invokes master task?    */
   const void *codeptr_ra             /* return address of api call  */ 
 );
 
 /* task regions */
 typedef void (*ompt_task_create_callback_t) ( 
-  ompt_task_data_t *parent_task_data,/* ID of parent task           */
+-*-  ompt_task_id_t parent_task_id,     /* ID of parent task           */-*-
++*+  ompt_task_data_t *parent_task_data,/* ID of parent task           */+*+
   const ompt_frame_t *parent_frame,  /* frame data for parent task  */
-  ompt_task_data_t *new_task_data,   /* ID of created task          */
+-*-  ompt_task_id_t new_task_id,        /* ID of created task          */-*-
++*+  ompt_task_data_t *new_task_data,   /* ID of created task          */+*+
   ompt_task_type_t type,             /* type of task being created  */ 
   const void *codeptr_ra             /* return address of api call  */ 
 );
 
 typedef void (*ompt_task_dependences_callback_t) (                                   
-  ompt_task_data_t *task_data,       /* ID of task with dependences */
+-*-  ompt_task_id_t task_id,            /* ID of task with dependences */-*-
++*+  ompt_task_data_t *task_data,       /* ID of task with dependences */+*+
   const ompt_task_dependence_t *deps,/* vector of task dependences  */
   int ndeps                          /* number of dependences       */
 );
 
 typedef void (*ompt_task_dependence_callback_t) (
-  ompt_task_data_t *src_task_data,   /* ID of dependence source     */
-  ompt_task_data_t *sink_task_data        /* ID of dependence sink       */
+-*-  ompt_task_id_t src_task_id,        /* ID of dependence source     */-*-
+-*-  ompt_task_id_t sink_task_id        /* ID of dependence sink       */-*-
++*+  ompt_task_data_t *src_task_data,   /* ID of dependence source     */+*+
++*+  ompt_task_data_t *sink_task_data        /* ID of dependence sink       */+*+
 );
 
 typedef void (*ompt_task_schedule_callback_t) (
-  ompt_task_data_t *prior_task_data, /* ID of descheduled task      */
+-*-  ompt_task_id_t prior_task_id,      /* ID of descheduled task      */-*-
++*+  ompt_task_data_t *prior_task_data, /* ID of descheduled task      */+*+
   _Bool prior_completed,             /* true if prior task completed*/
-  ompt_task_data_t *next_task_data        /* ID of scheduled task        */
+-*-  ompt_task_id_t next_task_id        /* ID of scheduled task        */-*-
++*+  ompt_task_data_t *next_task_data        /* ID of scheduled task        */+*+
 );
 
 typedef void (*ompt_scoped_implicit_callback_t) ( 
   ompt_scope_endpoint_t endpoint,    /* begin or end                */
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data            /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id            /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data            /* ID of task                  */+*+
 );
 
 /* task synchronization */
 typedef void (*ompt_scoped_sync_region_callback_t) ( 
   ompt_sync_region_kind_t kind,      /* barrier, taskwait, taskgroup*/
   ompt_scope_endpoint_t endpoint,    /* begin or end                */ 
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data,      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id,           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data,      /* ID of task                  */+*+
   const void *codeptr_ra             /* return address of api call  */
 );
 
@@ -2088,9 +2159,11 @@ typedef void (*ompt_scoped_nested_lock_callback_t) (
 /* master */
 typedef void (*ompt_scoped_master_callback_t) ( 
   ompt_scope_endpoint_t endpoint,    /* begin or end                */
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data,      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id,           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data,      /* ID of task                  */+*+
   const void *codeptr_ra             /* return address of api call  */
 );
 
@@ -2098,9 +2171,11 @@ typedef void (*ompt_scoped_master_callback_t) (
 typedef void (*ompt_scoped_worksharing_callback_t) (
   ompt_worksharing_type_t wstype,    /* loop, sections, single ...  */
   ompt_scope_endpoint_t endpoint,    /* begin or end                */
-  ompt_parallel_data_t *parallel_data,
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data,      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id,    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id,           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data,+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data,      /* ID of task                  */+*+
   const void *codeptr_ra             /* return address of api call  */
 );
 
@@ -2108,7 +2183,8 @@ typedef void (*ompt_scoped_worksharing_callback_t) (
 typedef void (*ompt_scoped_target_callback_t) ( 
   int32_t device_id,                 /* ID of the device            */
   ompt_target_type_t kind,           /* target, target data,...     */
-  ompt_task_data_t *task_data,       /* ID of encountering task     */     
+-*-  ompt_task_id_t task_id,            /* ID of encountering task     */     -*-
++*+  ompt_task_data_t *task_data,       /* ID of encountering task     */     +*+
   ompt_scope_endpoint_t endpoint,    /* begin or end                */ 
   ompt_target_id_t target_id,        /* ID of the target region     */
   const void *codeptr_ra             /* return address of api call  */
@@ -2144,7 +2220,7 @@ typedef void (*ompt_target_buffer_request_callback_t) (
   ompt_target_buffer_t** buffer,     /* host buffer for trace       */
   size_t *bytes                      /* buffer size in bytes        */
 );
-  
+
 typedef void (*ompt_target_buffer_complete_callback_t) (
   int32_t device_id,                 /* target device               */
   const ompt_target_buffer_t *buf,   /* target trace records        */
@@ -2166,20 +2242,20 @@ typedef void (*ompt_control_callback_t) (
 
 /* flush */
 typedef void (*ompt_flush_callback_t) (
-  ompt_thread_data_t *thread_data,   /* ID of thread                */
+-*-  ompt_thread_id_t thread_id,        /* ID of thread                */-*-
++*+  ompt_thread_data_t *thread_data,   /* ID of thread                */+*+
   const void *codeptr_ra             /* return address of api call  */
 );
-
-\end{verbatim}
+\PAR\end{lstlisting} 
 
 
 \clearpage
 \subsection{OMPT Inquiry and Control API}
 
-The functions in this section are not global function symbols in an OpenMP runtime. These functions can be looked up by name using the \verb|ompt_function_lookup_t| function passed to \verb|ompt_initialize|, as described in Section~\ref{sec:init} and Appendix~\ref{sec:app:init}.
+The functions in this section are not global function symbols in an OpenMP runtime. These functions can be looked up by name using the \lstinline|ompt_function_lookup_t| function passed to \lstinline|ompt_initialize|, as described in Section~\ref{sec:init} and Appendix~\ref{sec:app:init}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{verbatim}
+\begin{lstlisting}
 /* set and get callback functions */
 OMPT_API int ompt_set_callback( 
   ompt_event_t event,           /* the event of interest                                 */
@@ -2206,7 +2282,8 @@ OMPT_API _Bool ompt_enumerate_mutex_kinds(
 );
 
 /* thread inquiry */
-OMPT_API ompt_thread_data_t *ompt_get_thread_data(
+-*-OMPT_API ompt_thread_id_t ompt_get_thread_id(-*-
++*+OMPT_API ompt_thread_data_t *ompt_get_thread_data(+*+
   void
 );
 
@@ -2218,7 +2295,8 @@ OMPT_API omp_state_t ompt_get_state(
 /* parallel region inquiry */
 OMPT_API _Bool ompt_get_parallel_info(
   int ancestor_level,            /* how many levels outside the current region           */
-  ompt_parallel_data_t *par_data,/* ID of the region at the specified level              */
+-*-  ompt_parallel_id_t *par_id,    /* ID of the region at the specified level              */-*-
++*+  ompt_parallel_data_t *par_data,/* ID of the region at the specified level              */+*+
   int *team_size                 /* size of the team for the region at ancestor_level    */
 );
 
@@ -2226,9 +2304,11 @@ OMPT_API _Bool ompt_get_parallel_info(
 OMPT_API _Bool ompt_get_task_info(
   int ancestor_level,            /* how many levels outside the current region           */
   ompt_task_type_t *type,        /* return the type of the task                          */
-  ompt_task_data_t *task_data,   /* return the ID of the task                            */
+-*-  ompt_task_id_t *task_id,       /* return the ID of the task                            */-*-
++*+  ompt_task_data_t *task_data,   /* return the ID of the task                            */+*+
   ompt_frame_t **task_frame,     /* return the task_frame of the task                    */
-  ompt_parallel_data_t *par_data /* return the ID of the parallel region                 */
+-*-  ompt_parallel_id_t *par_id     /* return the ID of the parallel region                 */-*-
++*+  ompt_parallel_data_t *par_data /* return the ID of the parallel region                 */+*+
 );
 
 /* target region inquiry */
@@ -2305,24 +2385,23 @@ OMPT_TARG_API ompt_record_ompt_t *ompt_target_buffer_get_record_ompt(
   ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
   ompt_target_buffer_cursor_t current  /* cursor identifying position in buffer          */
 );
-   
+
 OMPT_TARG_API void *ompt_target_buffer_get_record_native(
   ompt_target_buffer_t *buffer,        /* handle for target trace buffer                 */
   ompt_target_buffer_cursor_t current, /* cursor identifying position in buffer          */
   ompt_target_id_t *host_op_id         /* host side ID for operation                     */
 );
-  
+
 OMPT_TARG_API ompt_record_native_abstract_t *
 ompt_target_buffer_get_record_native_abstract(
   void *native_record                  /* pointer to native trace record                 */
-);
-\end{verbatim}
+);\end{lstlisting} 
 
 \clearpage  
 \subsection{Record Types and Buffer Management}
 \label{appendix:ompt-records}
 
-\begin{verbatim}
+\begin{lstlisting}
 /* OMPT record type */
 typedef enum ompt_record_type_e {
   ompt_record_ompt               = 1,
@@ -2354,58 +2433,74 @@ typedef struct ompt_record_idle_s {
 } ompt_record_idle_t;
 
 typedef struct ompt_record_parallel_begin_s {
-  ompt_task_data_t *parent_task_data;/* ID of parent task           */
+-*-  ompt_task_id_t parent_task_id;     /* ID of parent task           */-*-
++*+  ompt_task_data_t *parent_task_data;/* ID of parent task           */+*+
   const ompt_frame_t *parent_frame;  /* frame data of parent task   */
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
   uint32_t requested_team_size;      /* requested number of threads */
   ompt_invoker_t invoker;            /* who invokes master task?    */
   const void *codeptr_ra;            /* return address of api call  */ 
 } ompt_record_parallel_begin_t;
 
 typedef struct ompt_record_parallel_end_s {
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
-  ompt_task_data_t *task_data;       /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t task_id;            /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t *task_data;       /* ID of task                  */+*+
   ompt_invoker_t invoker;            /* who invokes master task?    */
   const void *codeptr_ra;            /* return address of api call  */ 
 } ompt_record_parallel_end_t;
 
 typedef struct ompt_record_task_create_s {
-  ompt_task_data_t *parent_task_data;/* ID of parent task           */
+-*-  ompt_task_id_t parent_task_id;     /* ID of parent task           */-*-
++*+  ompt_task_data_t *parent_task_data;/* ID of parent task           */+*+
   const ompt_frame_t *parent_frame;  /* frame data for parent task  */
-  ompt_task_data_t *new_task_data;   /* ID of created task          */
+-*-  ompt_task_id_t new_task_id;        /* ID of created task          */-*-
++*+  ompt_task_data_t *new_task_data;   /* ID of created task          */+*+
   ompt_task_type_t type;             /* type of task being created  */ 
   const void *codeptr_ra;            /* return address of api call  */ 
 } ompt_record_task_create_t;
 
-/* note: not task dependences record since it points to data        */
-/*        rather than containing it                                 */
+-*-/* note: not task dependences record since it points to data       */-*-
+-*-/*        rather than containing it                                */-*-
++*+/* note: not task dependences record since it points to data        */+*+
++*+/*        rather than containing it                                 */+*+
 
 typedef struct ompt_record_task_dependence_s {
-  ompt_task_data_t *src_task_data;   /* ID of dependence source     */
-  ompt_task_data_t *sink_task_data;  /* ID of dependence sink       */
+-*-  ompt_task_id_t src_task_id;        /* ID of dependence source     */-*-
+-*-  ompt_task_id_t sink_task_id;       /* ID of dependence sink       */-*-
++*+  ompt_task_data_t *src_task_data;   /* ID of dependence source     */+*+
++*+  ompt_task_data_t *sink_task_data;  /* ID of dependence sink       */+*+
 } ompt_record_task_dependence_t;
 
 typedef struct ompt_record_task_schedule_s {
-  ompt_task_data_t *prior_task_data; /* ID of descheduled task      */
+-*-  ompt_task_id_t prior_task_id;      /* ID of descheduled task      */-*-
++*+  ompt_task_data_t *prior_task_data; /* ID of descheduled task      */+*+
   _Bool prior_completed;             /* true if prior task completed*/
-  ompt_task_data_t *next_task_data;  /* ID of scheduled task        */
+-*-  ompt_task_id_t next_task_id;       /* ID of scheduled task        */-*-
++*+  ompt_task_data_t *next_task_data;  /* ID of scheduled task        */+*+
 } ompt_record_task_schedule_t;
 
 typedef struct ompt_record_scoped_implicit_s {
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
-  ompt_task_data_t *task_data;       /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t task_id;            /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t *task_data;       /* ID of task                  */+*+
 } ompt_record_scoped_implicit_t;
 
 typedef struct ompt_record_scoped_sync_region_s {
   ompt_sync_region_kind_t kind;      /* barrier, taskwait, taskgroup*/
   ompt_scope_endpoint_t endpoint;    /* begin or end                */ 
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data;      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id;           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data;      /* ID of task                  */+*+
   const void *codeptr_ra;            /* return address of api call  */
 } ompt_record_scoped_sync_region_t;
 
@@ -2460,30 +2555,36 @@ typedef struct ompt_record_target_kernel_s {
 
 typedef struct ompt_record_scoped_master_s {
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data;      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id;           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data;      /* ID of task                  */+*+
   const void *codeptr_ra;            /* return address of api call  */
 } ompt_record_scoped_master_t;
 
 typedef struct ompt_record_scoped_worksharing_s {
   ompt_worksharing_type_t wstype;    /* loop, sections, single ...  */
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
-  ompt_parallel_data_t *parallel_data;
-                                     /* ID of parallel region       */
-  ompt_task_data_t * task_data;      /* ID of task                  */
+-*-  ompt_parallel_id_t parallel_id;    /* ID of parallel region       */-*-
+-*-  ompt_task_id_t  task_id;           /* ID of task                  */-*-
++*+  ompt_parallel_data_t *parallel_data;+*+
++*+                                     /* ID of parallel region       */+*+
++*+  ompt_task_data_t * task_data;      /* ID of task                  */+*+
   const void *codeptr_ra;            /* return address of api call  */
 } ompt_record_scoped_worksharing_t;
 
 typedef struct ompt_record_flush_s {
-  void *codeptr_ra;                  /* return address of api call   */
+-*-  void *codeptr_ra;                /* return address of api call   */-*-
++*+  void *codeptr_ra;                  /* return address of api call   */+*+
 } ompt_record_flush_t;
 
 /* OMPT record */
 typedef struct ompt_record_ompt_s {
   ompt_event_t type;                              /* event type          */
   ompt_target_time_t time;                        /* record timestamp    */
-  ompt_thread_data_t *thread_data;                /* record's thread ID  */
+-*-  ompt_thread_id_t thread_id;                     /* record's thread ID  */-*-
++*+  ompt_thread_data_t *thread_data;                /* record's thread ID  */+*+
   ompt_target_id_t target_id;                     /* host context        */
   union {
     ompt_record_thread_begin_t thread_begin;      /* for thread begin    */
@@ -2507,29 +2608,28 @@ typedef struct ompt_record_ompt_s {
     ompt_record_scoped_worksharing_t worksharing; /* for workshares      */
     ompt_record_flush_t flush;                    /* for flush           */
   } record;
-} ompt_record_ompt_t;
-\end{verbatim}
+} ompt_record_ompt_t;\end{lstlisting} 
 
 \clearpage
 \subsection{Registration and Initialization} 
 \label{sec:app:init}
 
 \noindent
-Function \verb|ompt_tool| is the only global symbol associated with OMPT. To use OMPT, a tool overlays an implementation of \verb|ompt_tool| in place of the default one provided by an OpenMP runtime. Use of this interface is described in Section~\ref{sec:env}.
-\begin{verbatim}
+Function \lstinline|ompt_tool| is the only global symbol associated with OMPT. To use OMPT, a tool overlays an implementation of \lstinline|ompt_tool| in place of the default one provided by an OpenMP runtime. Use of this interface is described in Section~\ref{sec:env}.
+\begin{lstlisting}
 extern "C" {
   ompt_initialize_fn_t ompt_tool(void);
 };
-\end{verbatim}
-Function \verb|ompt_tool| returns a pointer to a tool initializer, whose type signature is described below. Use of this interface is described in Section~\ref{sec:init}.
+\end{lstlisting}
+Function \lstinline|ompt_tool| returns a pointer to a tool initializer, whose type signature is described below. Use of this interface is described in Section~\ref{sec:init}.
 
-\begin{verbatim}
+\begin{lstlisting}
 typedef void (*ompt_initialize_fn_t) (
   ompt_function_lookup_t lookup,
   const char *runtime_version, 
   unsigned int ompt_version
 );
-\end{verbatim}
+\end{lstlisting}
 
 
 
@@ -2545,18 +2645,18 @@ typedef void (*ompt_initialize_fn_t) (
 \end{figure}
 
 \noindent
-Figure~\ref{fig:frame} illustrates a program executing a nested parallel region, where code A, B, and C represent, respectively, code associated with an initial task, outer-parallel, and inner-parallel regions.  Figure~\ref{fig:frame}  also depicts the stacks of two threads, where each new function call instantiates a new stack frame below the previous frames. When thread 1 encounters the outer-parallel region (parallel ``b"), it calls a routine in the OpenMP runtime to create a new parallel region. The OpenMP runtime sets the \verb|enter_frame| field in the \verb|ompt_frame_t| for the initial task executing code A to  frame f1---the user frame in the initial task that calls the runtime. The  \verb|ompt_frame_t| for the initial task is labeled  \verb|r1| in Figure~\ref{fig:frame}. In this figure, three consecutive runtime system frames (labeled ``par'' with frame identifiers f2--f4) are on the stack. 
-Before starting the implicit task for parallel region ``b" in thread 1, the runtime sets the \verb|exit_frame| in the implicit task's \verb|ompt_frame_t|  (labeled \verb|r2|) to f4. Execution of application code for parallel region ``b''  begins on thread 1  when the runtime system invokes application code B (frame f5) from frame f4. 
+Figure~\ref{fig:frame} illustrates a program executing a nested parallel region, where code A, B, and C represent, respectively, code associated with an initial task, outer-parallel, and inner-parallel regions.  Figure~\ref{fig:frame}  also depicts the stacks of two threads, where each new function call instantiates a new stack frame below the previous frames. When thread 1 encounters the outer-parallel region (parallel ``b"), it calls a routine in the OpenMP runtime to create a new parallel region. The OpenMP runtime sets the \lstinline|enter_frame| field in the \lstinline|ompt_frame_t| for the initial task executing code A to  frame f1---the user frame in the initial task that calls the runtime. The  \lstinline|ompt_frame_t| for the initial task is labeled  \lstinline|r1| in Figure~\ref{fig:frame}. In this figure, three consecutive runtime system frames (labeled ``par'' with frame identifiers f2--f4) are on the stack. 
+Before starting the implicit task for parallel region ``b" in thread 1, the runtime sets the \lstinline|exit_frame| in the implicit task's \lstinline|ompt_frame_t|  (labeled \lstinline|r2|) to f4. Execution of application code for parallel region ``b''  begins on thread 1  when the runtime system invokes application code B (frame f5) from frame f4. 
 
 Let us focus now on thread 2, an OpenMP thread. Figure~\ref{fig:frame}  shows this worker executing  work for the outer-parallel region ``b."
 On the OpenMP thread's stack is a runtime frame labeled ``idle,'' where the OpenMP thread waits for work. 
 When work becomes available, the runtime system invokes a function to dispatch it. While dispatching parallel work might involve a chain of several calls, here we assume that the length of this chain is 1 (frame f7).  Before thread 2 exits the runtime to execute an implicit task for parallel region ``b,'' the runtime 
-sets the \verb|exit_frame| field of the implicit task's \verb|ompt_frame_t| (labeled \verb|r3|) to frame f7. 
-When thread 2 later encounters the inner-parallel region ``c,"  as execution returns to the runtime,  the runtime fills in the  \verb|enter_frame| field of the current task's \verb|ompt_frame_t| (labeled \verb|r3|) to frame f8---the frame that invoked the runtime. Before the task for parallel region ``c'' is invoked on thread 2, the runtime system sets the \verb|exit_frame| field  of the \verb|ompt_frame_t| (labeled \verb|r4|) for the implicit task for ``c'' 
+sets the \lstinline|exit_frame| field of the implicit task's \lstinline|ompt_frame_t| (labeled \lstinline|r3|) to frame f7. 
+When thread 2 later encounters the inner-parallel region ``c,"  as execution returns to the runtime,  the runtime fills in the  \lstinline|enter_frame| field of the current task's \lstinline|ompt_frame_t| (labeled \lstinline|r3|) to frame f8---the frame that invoked the runtime. Before the task for parallel region ``c'' is invoked on thread 2, the runtime system sets the \lstinline|exit_frame| field  of the \lstinline|ompt_frame_t| (labeled \lstinline|r4|) for the implicit task for ``c'' 
 to frame f11. Execution of application code for parallel region ``c''  begins on thread 2  when the runtime system invokes application code C (frame f12) from frame f11.
 
 
-Below the stack for each thread in Figure~\ref{fig:frame}, the figure shows the \verb|ompt_frame_t| information obtained by calls to \verb|ompt_get_task_info| made on each thread for the stack state shown. We show the ID of the \verb|ompt_frame_t| record returned at each ancestor level. Note that thread 2 has task frame information for three levels of tasks, whereas thread 1 has only two.
+Below the stack for each thread in Figure~\ref{fig:frame}, the figure shows the \lstinline|ompt_frame_t| information obtained by calls to \lstinline|ompt_get_task_info| made on each thread for the stack state shown. We show the ID of the \lstinline|ompt_frame_t| record returned at each ancestor level. Note that thread 2 has task frame information for three levels of tasks, whereas thread 1 has only two.
 
 \clearpage
 {\color{red}
