@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised May 31, 2016}
+\date{Revised June 19, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -429,6 +429,7 @@ The callback executes in the context of
 the task that encountered the task or target construct.
 This callback has type signature \verb|ompt_task_create_callback_t|.
 The callback argument \verb|type| may indicate either an explicit task or one of the varieties of target tasks.
+The callback argument \verb|has_dependences| is true if the task has dependences with respect to data objects.
 
 \item \verb|ompt_event_task_schedule|
 
@@ -604,8 +605,8 @@ The following events designed for instrumentation-based tools enable tools to re
 
 \item \verb|ompt_event_task_dependences|
 
-  The OpenMP runtime invokes this callback after an explicit task is created, 
-  but before the task begins execution to announce its dependences with respect to data objects. 
+  If a task has any dependences with respect to data objects that constrain its ordering with respect to other tasks, 
+  the OpenMP runtime invokes this callback immediately after the callback announcing the task's creation to announce its dependences with respect to data objects. 
   This callback has type signature \verb|ompt_task_dependences_callback_t|.
   
 \item \verb|ompt_event_task_dependence_pair|
@@ -1970,6 +1971,7 @@ typedef void (*ompt_task_create_callback_t) (
   const ompt_frame_t *parent_frame,  /* frame data for parent task  */
   ompt_task_id_t new_task_id,        /* ID of created task          */
   ompt_task_type_t type,             /* type of task being created  */ 
+  _Bool has_dependences;             /* task has data dependences   */
   const void *codeptr_ra             /* return address of api call  */ 
 );
 
@@ -2094,6 +2096,7 @@ typedef void (*ompt_target_submit_callback_t) (
 
 /* target trace buffer management routines */
 typedef void (*ompt_target_buffer_request_callback_t) (
+  int32_t device_id,                 /* target device               */
   ompt_target_buffer_t** buffer,     /* host buffer for trace       */
   size_t *bytes                      /* buffer size in bytes        */
 );
@@ -2327,6 +2330,7 @@ typedef struct ompt_record_task_create_s {
   const ompt_frame_t *parent_frame;  /* frame data for parent task  */
   ompt_task_id_t new_task_id;        /* ID of created task          */
   ompt_task_type_t type;             /* type of task being created  */ 
+  _Bool has_dependences;             /* task has data dependences   */
   const void *codeptr_ra;            /* return address of api call  */ 
 } ompt_record_task_create_t;
 
