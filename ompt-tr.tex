@@ -1124,7 +1124,7 @@ Ancestor level 0 refers to the current task; information about ancestor tasks in
 Function \verb|ompt_get_task_info| returns a Boolean, which indicates whether there is a task at the specified ancestor level.
 {\em This function is async signal safe.} 
 
-A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|. The value returned in \verb|thread_num| indicates the number of OpenMP thread executing the task within the parallel region to which the task belongs.
+A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|. The value returned in \verb|thread_num| indicates the number of the OpenMP thread executing the task in the parallel region to which the task belongs.
 
 \begin{comment}
 \begin{table}
@@ -1973,7 +1973,7 @@ typedef void (*ompt_task_create_callback_t) (
   const ompt_frame_t *parent_frame,  /* frame data for parent task  */
   ompt_task_id_t new_task_id,        /* ID of created task          */
   ompt_task_type_t type,             /* type of task being created  */ 
-  _Bool has_dependences;             /* task has data dependences   */
+  _Bool has_dependences,             /* task has data dependences   */
   const void *codeptr_ra             /* return address of api call  */ 
 );
 
