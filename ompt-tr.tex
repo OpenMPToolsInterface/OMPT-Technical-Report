@@ -24,7 +24,7 @@ Eugene Loh\hbox to 0in{$^\S$\hss},
 Daniel Lorenz\thanks{J\"{u}lich Supercomputer Center}, 
 \\
 and other members of the OpenMP Tools Working Group}
-\date{Revised June 20, 2016}
+\date{Revised June 22, 2016}
 
 \usepackage{comment}
 \usepackage{needspace}
@@ -1114,7 +1114,8 @@ OMPT_API _Bool ompt_get_task_info(
   ompt_task_type_t *type,
   ompt_task_id_t *task_id,
   ompt_frame_t **task_frame,
-  ompt_parallel_id_t *par_id
+  ompt_parallel_id_t *par_id,
+  uint32_t *thread_num
 );
 \end{verbatim}
 \end{quote}
@@ -1123,7 +1124,7 @@ Ancestor level 0 refers to the current task; information about ancestor tasks in
 Function \verb|ompt_get_task_info| returns a Boolean, which indicates whether there is a task at the specified ancestor level.
 {\em This function is async signal safe.} 
 
-A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|.
+A task may be of type initial, implicit, explicit,  target, or degenerate. If the task at the specified  level is degenerate, the value returned in \verb|task_id| will be \verb|ompt_task_id_none|. A degenerate task will be associated with the enclosing parallel region. If the thread invoking this function is outside any parallel region, the value returned in \verb|par_id| will be \verb|ompt_parallel_id_none|. The value returned in \verb|thread_num| indicates the number of OpenMP thread executing the task within the parallel region to which the task belongs.
 
 \begin{comment}
 \begin{table}
@@ -1996,7 +1997,8 @@ typedef void (*ompt_task_schedule_callback_t) (
 typedef void (*ompt_scoped_implicit_callback_t) ( 
   ompt_scope_endpoint_t endpoint,    /* begin or end                */
   ompt_parallel_id_t parallel_id,    /* ID of parallel region       */
-  ompt_task_id_t  task_id            /* ID of task                  */
+  ompt_task_id_t  task_id,           /* ID of task                  */
+  uint32_t thread_num                /* OMP thread num              */
 );
 
 /* task synchronization */
@@ -2186,7 +2188,8 @@ OMPT_API _Bool ompt_get_task_info(
   ompt_task_type_t *type,        /* return the type of the task                          */
   ompt_task_id_t *task_id,       /* return the ID of the task                            */
   ompt_frame_t **task_frame,     /* return the task_frame of the task                    */
-  ompt_parallel_id_t *par_id     /* return the ID of the parallel region                 */
+  ompt_parallel_id_t *par_id,    /* return the ID of the parallel region                 */
+  uint32_t *thread_num           /* OMP thread num in enclosing parallel region          */
 );
 
 /* target region inquiry */
@@ -2354,6 +2357,7 @@ typedef struct ompt_record_scoped_implicit_s {
   ompt_scope_endpoint_t endpoint;    /* begin or end                */
   ompt_parallel_id_t parallel_id;    /* ID of parallel region       */
   ompt_task_id_t task_id;            /* ID of task                  */
+  uint32_t thread_num;               /* OMP thread num              */
 } ompt_record_scoped_implicit_t;
 
 typedef struct ompt_record_scoped_sync_region_s {
