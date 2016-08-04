@@ -898,8 +898,8 @@ When a thread is not in a wait state, a thread's wait identifier has an undefine
 \vbox{    
 \begin{boxedcode}
 typedef struct ompt\_frame\_s {
-    void *exit\_frame;  /* runtime frame that calls user code */
-    void *enter\_frame; /* user frame that calls the runtime  */
+    void *\plc{exit\_frame};  /* runtime frame that calls user code */
+    void *\plc{enter\_frame}; /* user frame that calls the runtime  */
 } ompt\_frame\_t;
 \end{boxedcode}
 }
@@ -1743,8 +1743,8 @@ This section describes miscellaneous enumeration types used by tool callbacks.
                                              
 typedef uint64\_t ompt\_id\_t;
 typedef union ompt\_data\_u {
-  ompt\_id\_t id;                               /* integer ID under tool control               */
-  void *ptr;                                  /* pointer under tool control                  */
+  ompt\_id\_t \plc{id};                               /* integer ID under tool control               */
+  void *\plc{ptr};                                  /* pointer under tool control                  */
 } ompt\_data\_t;
 
 ompt\_data\_t ompt\_data\_none = {.id=0};         /* initial value of ompt\_data\_t instances      *
@@ -1846,13 +1846,13 @@ typedef enum ompt\_task\_dependence\_flag\_e {
 } ompt\_task\_dependence\_flag\_t;
 
 typedef struct ompt\_task\_dependence\_s {
-  void *variable\_addr;
-  uint32\_t  dependence\_flags;
+  void *\plc{variable\_addr};
+  uint32\_t  \plc{dependence\_flags};
 } ompt\_task\_dependence\_t;
 
 typedef struct ompt\_frame\_s {
-  void *exit\_frame;                           /* runtime frame that reenters user code       */
-  void *enter\_frame;                          /* user frame that reenters the runtime        */
+  void *\plc{exit\_frame};                           /* runtime frame that reenters user code       */
+  void *\plc{enter\_frame};                          /* user frame that reenters the runtime        */
 } ompt\_frame\_t;
 
 #define ompt\_hwid\_none                (-1)
@@ -1892,11 +1892,11 @@ typedef ompt\_interface\_fn\_t (*\plc{ompt\_function\_lookup\_t}) (
 /* threads */
 typedef void (*\plc{ompt\_thread\_begin\_callback\_t}) (
   ompt\_thread\_type\_t \plc{thread\_type},    /* type of thread              */
-  ompt\_data\_t *thread\_data           /* thread data (tool \plc{controlled}) */
+  ompt\_data\_t *\plc{thread\_data}           /* thread data (tool controlled) */
 );
 
 typedef void (*\plc{ompt\_thread\_end\_callback\_t}) (
-  ompt\_data\_t *thread\_data           /* thread data (tool \plc{controlled}) */
+  ompt\_data\_t *\plc{thread\_data}           /* thread data (tool controlled) */
 );
 
 /* idle */
@@ -1907,52 +1907,52 @@ typedef void (*\plc{ompt\_idle\_callback\_t}) (
 /* parallel regions */
 typedef void (*\plc{ompt\_parallel\_begin\_callback\_t}) (
   ompt\_data\_t *\plc{parent\_task\_data},     /* parent task data (tool \plc{controlled}) */
-  const ompt\_frame\_t *parent\_frame,  /* frame data of parent task   */
-  ompt\_data\_t *parallel\_data,        /* parallel data (tool \plc{controlled}) */
-  uint32\_t requested\_team\_size,      /* requested number of threads */
-  ompt\_invoker\_t invoker,            /* who invokes master task?    */
-  const void *codeptr\_ra             /* return address of api call  */ 
+  const ompt\_frame\_t *\plc{parent\_frame},  /* frame data of parent task   */
+  ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
+  uint32\_t \plc{requested\_team\_size},      /* requested number of threads */
+  ompt\_invoker\_t \plc{invoker},            /* who invokes master task?    */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */ 
 );
 
 typedef void (*\plc{ompt\_parallel\_end\_callback\_t}) (
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
-  ompt\_data\_t *task\_data,            /* task data (tool \plc{controlled}) */
-  ompt\_invoker\_t invoker,            /* who invokes master task?    */
-  const void *codeptr\_ra             /* return address of api call  */ 
+  ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
+  ompt\_invoker\_t \plc{invoker},            /* who invokes master task?    */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */ 
 );
 
 /* task regions */
 typedef void (*\plc{ompt\_task\_create\_callback\_t}) ( 
   ompt\_data\_t *\plc{parent\_task\_data},     /* parent task data (tool \plc{controlled}) */
-  const ompt\_frame\_t *parent\_frame,  /* frame data for parent task  */
-  ompt\_data\_t *new\_task\_data,        /* created task's data (tool \plc{controlled}) */
-  ompt\_task\_type\_t type,             /* type of task being created  */ 
-  \_Bool has\_dependences,             /* task has data dependences   */
-  const void *codeptr\_ra             /* return address of api call  */ 
+  const ompt\_frame\_t *\plc{parent\_frame},  /* frame data for parent task  */
+  ompt\_data\_t *\plc{new\_task\_data},        /* created task's data (tool \plc{controlled}) */
+  ompt\_task\_type\_t \plc{type},             /* type of task being created  */ 
+  \_Bool \plc{has\_dependences},             /* task has data dependences   */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */ 
 );
 
 typedef void (*\plc{ompt\_task\_dependences\_callback\_t}) (                                   
   ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
-  const ompt\_task\_dependence\_t *deps,/* vector of task dependences  */
-  int ndeps                          /* number of dependences       */
+  const ompt\_task\_dependence\_t *\plc{deps},/* vector of task dependences  */
+  int \plc{ndeps}                          /* number of dependences       */
 );
 
 typedef void (*\plc{ompt\_task\_dependence\_callback\_t}) (
   ompt\_data\_t *\plc{src\_task\_data},        /* dependence source task data (tool \plc{controlled}) */
-  ompt\_data\_t *sink\_task\_data        /* dependence sink task data (tool \plc{controlled}) */
+  ompt\_data\_t *\plc{sink\_task\_data}        /* dependence sink task data (tool controlled) */
 );
 
 typedef void (*\plc{ompt\_task\_schedule\_callback\_t}) (
   ompt\_data\_t *\plc{prior\_task\_data},      /* descheduled task data (tool \plc{controlled}) */
-  \_Bool prior\_completed,             /* true if prior task completed*/
-  ompt\_data\_t *next\_task\_data        /* scheduled task data (tool \plc{controlled}) */
+  \_Bool \plc{prior\_completed},             /* true if prior task completed*/
+  ompt\_data\_t *\plc{next\_task\_data}        /* scheduled task data (tool controlled) */
 );
 
 typedef void (*\plc{ompt\_scoped\_implicit\_callback\_t}) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
-  ompt\_data\_t *task\_data,            /* task data (tool \plc{controlled}) */
-  uint32\_t thread\_num                /* OMP thread num              */
+  ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
+  uint32\_t \plc{thread\_num}                /* OMP thread num              */
 );
 
 /* task synchronization */
@@ -1960,8 +1960,8 @@ typedef void (*\plc{ompt\_scoped\_sync\_region\_callback\_t}) (
   ompt\_sync\_region\_kind\_t \plc{kind},      /* \plc{barrier}, \plc{taskwait}, taskgroup*/
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */ 
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
-  ompt\_data\_t *task\_data,            /* task data (tool \plc{controlled}) */
-  const void *codeptr\_ra             /* return address of api call  */
+  ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 /* mutual exclusion */
@@ -2003,8 +2003,8 @@ typedef void (*\plc{ompt\_scoped\_nested\_lock\_callback\_t}) (
 typedef void (*\plc{ompt\_scoped\_master\_callback\_t}) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
-  ompt\_data\_t *task\_data,            /* task data (tool \plc{controlled}) */
-  const void *codeptr\_ra             /* return address of api call  */
+  ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 /* worksharing regions */
@@ -2012,8 +2012,8 @@ typedef void (*\plc{ompt\_scoped\_worksharing\_callback\_t}) (
   ompt\_worksharing\_type\_t \plc{wstype},    /* \plc{loop}, \plc{sections}, single ...  */
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
-  ompt\_data\_t *task\_data,            /* task data (tool \plc{controlled}) */
-  const void *codeptr\_ra             /* return address of api call  */
+  ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 /* target regions */
@@ -2021,9 +2021,9 @@ typedef void (*\plc{ompt\_scoped\_target\_callback\_t}) (
   int32\_t \plc{device\_id},                 /* ID of the device            */
   ompt\_target\_type\_t \plc{kind},           /* \plc{target}, target \plc{data},...     */
   ompt\_data\_t *\plc{task\_data},            /* encountering task data (tool \plc{controlled}) */
-  ompt\_scope\_endpoint\_t endpoint,    /* begin or end                */ 
-  ompt\_id\_t target\_id,               /* ID of the target region     */
-  const void *codeptr\_ra             /* return address of api call  */
+  ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */ 
+  ompt\_id\_t \plc{target\_id},               /* ID of the target region     */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 typedef void (*\plc{ompt\_target\_data\_callback\_t}) (
@@ -2081,7 +2081,7 @@ typedef void (*\plc{ompt\_control\_callback\_t}) (
 /* flush */
 typedef void (*\plc{ompt\_flush\_callback\_t}) (
   ompt\_data\_t *\plc{thread\_data},          /* thread data (tool \plc{controlled}) */
-  const void *codeptr\_ra             /* return address of api call  */
+  const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 \end{boxedcode}
@@ -2109,14 +2109,14 @@ OMPT\_API int ompt\_get\_callback(
 OMPT\_API \_Bool ompt\_enumerate\_states(
   omp\_state\_t \plc{current\_state},    /* a valid state in the enumeration                      */
   omp\_state\_t *\plc{next\_state},      /* the next state (or \plc{none}) in the enumeration           */
-  const char **next\_state\_name  /* name of the next state in the enumeration             */
+  const char **\plc{next\_state\_name}  /* name of the next state in the enumeration             */
 );
 
 /* enumerate all kinds of mutex implementations */
 OMPT\_API \_Bool ompt\_enumerate\_mutex\_kinds(
   uint32\_t \plc{current\_kind},        /* a mutex kind in the enumeration                       */
   uint32\_t *\plc{next\_kind},          /* the next mutex kind (or \plc{none}) in the enumeration      */
-  const char **next\_kind\_name   /* name of the next mutex in the enumeration             */
+  const char **\plc{next\_kind\_name}   /* name of the next mutex in the enumeration             */
 );
 
 /* thread inquiry */
@@ -2133,7 +2133,7 @@ OMPT\_API omp\_state\_t ompt\_get\_state(
 OMPT\_API \_Bool ompt\_get\_parallel\_info(
   int \plc{ancestor\_level},            /* how many levels outside the current region           */
   ompt\_data\_t **\plc{parallel\_data},   /* return parallel data at specified level (tool \plc{controlled}) */
-  int *team\_size                 /* return size of the team for the region at ancestor\_level */
+  int *\plc{team\_size}                 /* return size of the team for the region at ancestor\_level */
 );
 
 /* task region inquiry */
@@ -2141,9 +2141,9 @@ OMPT\_API \_Bool ompt\_get\_task\_info(
   int \plc{ancestor\_level},            /* how many levels outside the current region           */
   ompt\_task\_type\_t *\plc{type},        /* return the type of the task                          */
   ompt\_data\_t **\plc{task\_data},       /* return task data at specified level (tool \plc{controlled}) */
-  ompt\_frame\_t **task\_frame,     /* return the task\_frame of the task                    */
-  ompt\_data\_t **parallel\_data,   /* return parallel data at specified level (tool \plc{controlled}) */
-  uint32\_t *thread\_num           /* OMP thread num in enclosing parallel region          */
+  ompt\_frame\_t **\plc{task\_frame},     /* return the task\_frame of the task                    */
+  ompt\_data\_t **\plc{parallel\_data},   /* return parallel data at specified level (tool \plc{controlled}) */
+  uint32\_t *\plc{thread\_num}           /* OMP thread num in enclosing parallel region          */
 );
 
 /* target region inquiry */
@@ -2252,172 +2252,172 @@ typedef enum ompt\_record\_native\_class\_e {
 
 /* native record abstract */
 typedef struct ompt\_record\_native\_abstract\_s {
-  ompt\_record\_native\_class\_t rclass;
-  const char *type;
-  ompt\_target\_time\_t start\_time;
-  ompt\_target\_time\_t end\_time;
-  uint64\_t hwid;
+  ompt\_record\_native\_class\_t \plc{rclass};
+  const char *\plc{type};
+  ompt\_target\_time\_t \plc{start\_time};
+  ompt\_target\_time\_t \plc{end\_time};
+  uint64\_t \plc{hwid};
 } ompt\_record\_native\_abstract\_t;
 
 /* record types */
 typedef struct ompt\_record\_thread\_begin\_s {
-  ompt\_thread\_type\_t thread\_type;    /* type of thread              */
+  ompt\_thread\_type\_t \plc{thread\_type};    /* type of thread              */
 } ompt\_record\_thread\_begin\_t;
 
 typedef struct ompt\_record\_idle\_s {
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */
 } ompt\_record\_idle\_t;
 
 typedef struct ompt\_record\_parallel\_begin\_s {
-  ompt\_id\_t parent\_task\_id;          /* ID of parent task           */
-  const ompt\_frame\_t *parent\_frame;  /* frame data of parent task   */
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  uint32\_t requested\_team\_size;      /* requested number of threads */
-  ompt\_invoker\_t invoker;            /* who invokes master task?    */
-  const void *codeptr\_ra;            /* return address of api call  */ 
+  ompt\_id\_t \plc{parent\_task\_id};          /* ID of parent task           */
+  const ompt\_frame\_t *\plc{parent\_frame};  /* frame data of parent task   */
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  uint32\_t \plc{requested\_team\_size};      /* requested number of threads */
+  ompt\_invoker\_t \plc{invoker};            /* who invokes master task?    */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */ 
 } ompt\_record\_parallel\_begin\_t;
 
 typedef struct ompt\_record\_parallel\_end\_s {
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  ompt\_id\_t task\_id;                 /* ID of task                  */
-  ompt\_invoker\_t invoker;            /* who invokes master task?    */
-  const void *codeptr\_ra;            /* return address of api call  */ 
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  ompt\_id\_t \plc{task\_id};                 /* ID of task                  */
+  ompt\_invoker\_t \plc{invoker};            /* who invokes master task?    */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */ 
 } ompt\_record\_parallel\_end\_t;
 
 typedef struct ompt\_record\_task\_create\_s {
-  ompt\_id\_t parent\_task\_id;          /* ID of parent task           */
-  const ompt\_frame\_t *parent\_frame;  /* frame data for parent task  */
-  ompt\_id\_t new\_task\_id;             /* ID of created task          */
-  ompt\_task\_type\_t type;             /* type of task being created  */ 
-  \_Bool has\_dependences;             /* task has data dependences   */
-  const void *codeptr\_ra;            /* return address of api call  */ 
+  ompt\_id\_t \plc{parent\_task\_id};          /* ID of parent task           */
+  const ompt\_frame\_t *\plc{parent\_frame};  /* frame data for parent task  */
+  ompt\_id\_t \plc{new\_task\_id};             /* ID of created task          */
+  ompt\_task\_type\_t \plc{type};             /* type of task being created  */ 
+  \_Bool \plc{has\_dependences};             /* task has data dependences   */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */ 
 } ompt\_record\_task\_create\_t;
 
 /* note: not task dependences record since it points to data       */
 /*        rather than containing it                                */
 
 typedef struct ompt\_record\_task\_dependence\_s {
-  ompt\_id\_t src\_task\_id;             /* ID of dependence source     */
-  ompt\_id\_t sink\_task\_id;            /* ID of dependence sink       */
+  ompt\_id\_t \plc{src\_task\_id};             /* ID of dependence source     */
+  ompt\_id\_t \plc{sink\_task\_id};            /* ID of dependence sink       */
 } ompt\_record\_task\_dependence\_t;
 
 typedef struct ompt\_record\_task\_schedule\_s {
-  ompt\_id\_t prior\_task\_id;           /* ID of descheduled task      */
-  \_Bool prior\_completed;             /* true if prior task completed*/
-  ompt\_id\_t next\_task\_id;            /* ID of scheduled task        */
+  ompt\_id\_t \plc{prior\_task\_id};           /* ID of descheduled task      */
+  \_Bool \plc{prior\_completed};             /* true if prior task completed*/
+  ompt\_id\_t \plc{next\_task\_id};            /* ID of scheduled task        */
 } ompt\_record\_task\_schedule\_t;
 
 typedef struct ompt\_record\_scoped\_implicit\_s {
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  ompt\_id\_t task\_id;                 /* ID of task                  */
-  uint32\_t thread\_num;               /* OMP thread num              */
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  ompt\_id\_t \plc{task\_id};                 /* ID of task                  */
+  uint32\_t \plc{thread\_num};               /* OMP thread num              */
 } ompt\_record\_scoped\_implicit\_t;
 
 typedef struct ompt\_record\_scoped\_sync\_region\_s {
-  ompt\_sync\_region\_kind\_t kind;      /* barrier, taskwait, taskgroup*/
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */ 
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  ompt\_id\_t  task\_id;                /* ID of task                  */
-  const void *codeptr\_ra;            /* return address of api call  */
+  ompt\_sync\_region\_kind\_t \plc{kind};      /* barrier, taskwait, taskgroup*/
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */ 
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  ompt\_id\_t  \plc{task\_id};                /* ID of task                  */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */
 } ompt\_record\_scoped\_sync\_region\_t;
 
 typedef struct ompt\_record\_lock\_init\_s {
-  \_Bool is\_nest\_lock;                /* nested lock or not          */
+  \_Bool \plc{is\_nest\_lock};                /* nested lock or not          */
   ompt\_wait\_id\_t wait\_id,            /* wait ID                     */
   uint32\_t hint,                     /* OMP lock hint               */
   uint32\_t kind,                     /* implementation kind         */
-  const void *codeptr\_ra;            /* return address of api call  */          
+  const void *\plc{codeptr\_ra};            /* return address of api call  */          
 } ompt\_record\_lock\_init\_t;
 
 typedef struct ompt\_record\_lock\_destroy\_s {
-  \_Bool is\_nest\_lock;                /* nested lock or not          */
-  ompt\_wait\_id\_t wait\_id;            /* ID of mutex being awaited   */
-  const void *codeptr\_ra;            /* return address of api call  */       
+  \_Bool \plc{is\_nest\_lock};                /* nested lock or not          */
+  ompt\_wait\_id\_t \plc{wait\_id};            /* ID of mutex being awaited   */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */       
 } ompt\_record\_lock\_destroy\_t;
 
 typedef struct ompt\_record\_mutex\_acquire\_s {
-  ompt\_mutex\_kind\_t kind;            /* kind of mutex               */
-  uint32\_t hint;                     /* based on OMP lock hint      */
-  uint32\_t impl;                     /* implementation of mutex     */
-  ompt\_wait\_id\_t wait\_id;            /* ID of mutex being awaited   */
-  const void *codeptr\_ra;            /* return address of api call  */          
+  ompt\_mutex\_kind\_t \plc{kind};            /* kind of mutex               */
+  uint32\_t \plc{hint};                     /* based on OMP lock hint      */
+  uint32\_t \plc{impl};                     /* implementation of mutex     */
+  ompt\_wait\_id\_t \plc{wait\_id};            /* ID of mutex being awaited   */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */          
 } ompt\_record\_mutex\_acquire\_t;
 
 typedef struct ompt\_record\_mutex\_s {
-  ompt\_mutex\_kind\_t kind;            /* type of mutex               */
-  ompt\_wait\_id\_t wait\_id;            /* ID of mutex being awaited   */
-  const void *codeptr\_ra;            /* return address of api call  */       
+  ompt\_mutex\_kind\_t \plc{kind};            /* type of mutex               */
+  ompt\_wait\_id\_t \plc{wait\_id};            /* ID of mutex being awaited   */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */       
 } ompt\_record\_mutex\_t;
 
 typedef struct ompt\_record\_scoped\_nested\_lock\_s {
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */
-  ompt\_wait\_id\_t wait\_id;            /* ID of mutex being awaited   */
-  const void *codeptr\_ra;            /* return address of api call  */       
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */
+  ompt\_wait\_id\_t \plc{wait\_id};            /* ID of mutex being awaited   */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */       
 } ompt\_record\_scoped\_nested\_lock\_t;
 
 typedef struct ompt\_record\_target\_data\_s {
-  ompt\_id\_t host\_op\_id;              /* host side ID for operation  */
-  ompt\_target\_data\_op\_t optype;      /* type of operation           */
-  void *host\_addr;                   /* host address of the data    */
-  void *device\_addr;                 /* device address of the data  */ 
-  size\_t bytes;                      /* number of bytes mapped      */
-  ompt\_target\_time\_t end\_time;       /* end time                    */
+  ompt\_id\_t \plc{host\_op\_id};              /* host side ID for operation  */
+  ompt\_target\_data\_op\_t \plc{optype};      /* type of operation           */
+  void *\plc{host\_addr};                   /* host address of the data    */
+  void *\plc{device\_addr};                 /* device address of the data  */ 
+  size\_t \plc{bytes};                      /* number of bytes mapped      */
+  ompt\_target\_time\_t \plc{end\_time};       /* end time                    */
 } ompt\_record\_target\_data\_t;
 
 typedef struct ompt\_record\_target\_kernel\_s {
-  ompt\_id\_t host\_op\_id;              /* host side ID for operation  */
-  uint32\_t granted\_num\_teams;        /* number of teams granted     */
-  ompt\_target\_time\_t end\_time;       /* end time                    */
+  ompt\_id\_t \plc{host\_op\_id};              /* host side ID for operation  */
+  uint32\_t \plc{granted\_num\_teams};        /* number of teams granted     */
+  ompt\_target\_time\_t \plc{end\_time};       /* end time                    */
 } ompt\_record\_target\_kernel\_t;
 
 typedef struct ompt\_record\_scoped\_master\_s {
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  ompt\_id\_t  task\_id;                /* ID of task                  */
-  const void *codeptr\_ra;            /* return address of api call  */
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  ompt\_id\_t  \plc{task\_id};                /* ID of task                  */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */
 } ompt\_record\_scoped\_master\_t;
 
 typedef struct ompt\_record\_scoped\_worksharing\_s {
-  ompt\_worksharing\_type\_t wstype;    /* loop, sections, single ...  */
-  ompt\_scope\_endpoint\_t endpoint;    /* begin or end                */
-  ompt\_id\_t parallel\_id;             /* ID of parallel region       */
-  ompt\_id\_t task\_id;                 /* ID of task                  */
-  const void *codeptr\_ra;            /* return address of api call  */
+  ompt\_worksharing\_type\_t \plc{wstype};    /* loop, sections, single ...  */
+  ompt\_scope\_endpoint\_t \plc{endpoint};    /* begin or end                */
+  ompt\_id\_t \plc{parallel\_id};             /* ID of parallel region       */
+  ompt\_id\_t \plc{task\_id};                 /* ID of task                  */
+  const void *\plc{codeptr\_ra};            /* return address of api call  */
 } ompt\_record\_scoped\_worksharing\_t;
 
 typedef struct ompt\_record\_flush\_s {
-  void *codeptr\_ra;                  /* return address of api call  */
+  void *\plc{codeptr\_ra};                  /* return address of api call  */
 } ompt\_record\_flush\_t;
 
 /* OMPT record */
 typedef struct ompt\_record\_ompt\_s {
-  ompt\_event\_t type;                              /* event type          */
-  ompt\_target\_time\_t time;                        /* record timestamp    */
-  ompt\_id\_t thread\_id;                            /* record's thread ID  */
-  ompt\_id\_t target\_id;                            /* host context        */
+  ompt\_event\_t \plc{type};                              /* event type          */
+  ompt\_target\_time\_t \plc{time};                        /* record timestamp    */
+  ompt\_id\_t \plc{thread\_id};                            /* record's thread ID  */
+  ompt\_id\_t \plc{target\_id};                            /* host context        */
   union {
-    ompt\_record\_thread\_begin\_t thread\_begin;      /* for thread begin    */
-    ompt\_record\_idle\_t idle;                      /* for idle            */
-    ompt\_record\_parallel\_begin\_t parallel\_begin;  /* for parallel begin  */
-    ompt\_record\_parallel\_end\_t parallel\_end;      /* for parallel end    */
-    ompt\_record\_task\_create\_t task\_create;        /* for task create     */
-    ompt\_record\_task\_dependence\_t task\_dep;       /* for task dependence */
-    ompt\_record\_task\_schedule\_t task\_sched;       /* for task schedule   */
-    ompt\_record\_scoped\_implicit\_t implicit;       /* for implicit task   */
-    ompt\_record\_scoped\_sync\_region\_t sync\_region; /* for sync            */
-    ompt\_record\_target\_data\_t data;               /* for target data     */
-    ompt\_record\_target\_data\_map\_t data\_map;       /* for target data map */
-    ompt\_record\_target\_kernel\_t kernel;           /* for target kernel   */
-    ompt\_record\_init\_lock\_t lock\_init;            /* for lock init       */
-    ompt\_record\_lock\_destroy\_t lock\_destroy;      /* for lock destroy    */
-    ompt\_record\_mutex\_acquire\_t mutex\_acquire;    /* for mutex acquire   */
-    ompt\_record\_mutex\_t mutex;                    /* for mutex           */
-    ompt\_record\_scoped\_nested\_lock\_t nested\_lock; /* for nested lock     */
-    ompt\_record\_scoped\_master\_t master;           /* for master          */
-    ompt\_record\_scoped\_worksharing\_t worksharing; /* for workshares      */
-    ompt\_record\_flush\_t flush;                    /* for flush           */
-  } record;
+    ompt\_record\_thread\_begin\_t \plc{thread\_begin};      /* for thread begin    */
+    ompt\_record\_idle\_t \plc{idle};                      /* for idle            */
+    ompt\_record\_parallel\_begin\_t \plc{parallel\_begin};  /* for parallel begin  */
+    ompt\_record\_parallel\_end\_t \plc{parallel\_end};      /* for parallel end    */
+    ompt\_record\_task\_create\_t \plc{task\_create};        /* for task create     */
+    ompt\_record\_task\_dependence\_t \plc{task\_dep};       /* for task dependence */
+    ompt\_record\_task\_schedule\_t \plc{task\_sched};       /* for task schedule   */
+    ompt\_record\_scoped\_implicit\_t \plc{implicit};       /* for implicit task   */
+    ompt\_record\_scoped\_sync\_region\_t \plc{sync\_region}; /* for sync            */
+    ompt\_record\_target\_data\_t \plc{data};               /* for target data     */
+    ompt\_record\_target\_data\_map\_t \plc{data\_map};       /* for target data map */
+    ompt\_record\_target\_kernel\_t \plc{kernel};           /* for target kernel   */
+    ompt\_record\_init\_lock\_t \plc{lock\_init};            /* for lock init       */
+    ompt\_record\_lock\_destroy\_t \plc{lock\_destroy};      /* for lock destroy    */
+    ompt\_record\_mutex\_acquire\_t \plc{mutex\_acquire};    /* for mutex acquire   */
+    ompt\_record\_mutex\_t \plc{mutex};                    /* for mutex           */
+    ompt\_record\_scoped\_nested\_lock\_t \plc{nested\_lock}; /* for nested lock     */
+    ompt\_record\_scoped\_master\_t \plc{master};           /* for master          */
+    ompt\_record\_scoped\_worksharing\_t \plc{worksharing}; /* for workshares      */
+    ompt\_record\_flush\_t \plc{flush};                    /* for flush           */
+  } \plc{record};
 } ompt\_record\_ompt\_t;
 \end{boxedcode}
 
