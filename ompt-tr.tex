@@ -1259,7 +1259,6 @@ Target devices typically operate asynchronously with respect to a host. It may n
   
 Some functions in the target device tracing control API described in this section are marked with \verb|OMPT_TARG_API|. These represent function pointers that should be obtained from a target device by invoking the \verb|lookup| function (provided by the target  as a return value to function \verb|ompt_target_get_device_info|) and passing it the name of the function of interest.
 
-
 \subsection{Enabling and Disabling Tracing for OMPT Record Types}
 \label{sec:trace-event}
 A tool uses the function \verb|ompt_target_set_trace_ompt| to enable or disable the recording of trace records for one or more types of OMPT events:
@@ -1482,6 +1481,21 @@ ompt_target_buffer_get_record_native_abstract(
 \end{verbatim}
 \end{quote}
 A  \verb|ompt_record_native_abstract_t| record contains several pieces of information that a tool can use to process a native record that it may not fully understand. The record \verb|rclass| field indicates whether the record is informational (\verb|ompt_record_native_class_info|) or represents an event (\verb|ompt_record_native_class_event|). Knowing whether a record is informational or represents an event can help a tool determine how to present the record. The record  \verb|type| field points to a statically-allocated, immutable character string that provides  a meaningful name  a tool might want to use to describe the event to a user. The \verb|start_time| and \verb|end_time| fields are used to place an event in time. The times are relative to the device clock. If an event has no associated \verb|start_time| and/or \verb|end_time|, the value of an unavailable field will be the distinguished value \verb|ompt_time_none|. The hardware id field, \verb|hwid|,  is used to indicate the location on the device where the event occurred. A \verb|hwid| may represent a hardware abstraction such as a core or a hardware thread id. The meaning of a \verb|hwid| value for a device is defined by the implementer of the software stack for the device. If there is no \verb|hwid| associated with a record, the value of \verb|hwid| shall be \verb|ompt_hwid_none|. 
+
+\subsection{Identifiers in Trace Records}
+Since analysis of trace records is done asynchronous, a tool cannot store
+data in an \verb|ompt_data_t| field when the event happens. 
+Therefore, in trace records each OpenMP task region, parallel region and 
+thread has an associated identifier of type \verb|ompt_id_t|. 
+A region’s identifier is assigned when the region is created. 
+Identifiers assigned to regions on each device are unique from the time an 
+OpenMP runtime is initialized until it is shut down.
+Tools should not assume that \verb|ompt_id_t| values are small or densely
+allocated. The value \verb|ompt_id_none| is reserved to indicate an
+invalid id.
+
+
+
 
 \section{Initializing OMPT Support for Tools}
 \label{sec:enabling}
