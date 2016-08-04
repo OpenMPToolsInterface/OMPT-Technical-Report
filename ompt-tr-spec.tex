@@ -1290,7 +1290,7 @@ To start recording, a tool needs to register a \emph{buffer request} callback th
 
 The \emph{buffer request} callback has the following type signature:
 \begin{boxedcode}
-typedef void (*\plc{ompt\_target\_buffer\_request\_callback\_t}) (
+typedef void (*ompt\_target\_buffer\_request\_callback\_t) (
   int32\_t \plc{device\_id},
   ompt\_target\_buffer\_t **\plc{buffer},
   size\_t *\plc{bytes}
@@ -1302,7 +1302,7 @@ A buffer request callback  may set \code{*bytes} to 0 if it does not want to pro
 
 The \emph{buffer complete} callback has the following type signature: 
 \begin{boxedcode}
-typedef void (*\plc{ompt\_target\_buffer\_complete\_callback\_t}) (
+typedef void (*ompt\_target\_buffer\_complete\_callback\_t) (
   int32\_t \plc{device\_id}, 
   const ompt\_target\_buffer\_t *\plc{buffer},
   size\_t \plc{bytes},
@@ -1491,7 +1491,7 @@ the OpenMP runtime in the child process will call  \code{ompt\_tool} under the s
 When an OpenMP runtime receives a non-NULL pointer to a tool initializer function with signature \code{ompt\_initialize\_fn\_t} as the return value from a call to a tool-provided implementation of \code{ompt\_tool}, the runtime will call the tool initializer immediately after the runtime fully initializes itself. The initializer must be called before beginning execution of any OpenMP construct or completing any execution environment  routine invocation.  The signature for the tool initializer callback is shown below:
 
 \begin{boxedcode}
-typedef void (*\plc{ompt\_initialize\_fn\_t}) (
+typedef void (*ompt\_initialize\_fn\_t) (
   ompt\_function\_lookup\_t \plc{lookup},
   const char *\plc{runtime\_version}, 
   unsigned int \plc{ompt\_version}
@@ -1508,7 +1508,7 @@ The two principal duties of a tool initializer are looking up pointers to all OM
 The type signature for  \code{lookup} is:
 
 \begin{boxedcode}
-typedef ompt\_interface\_fn\_t (*\plc{ompt\_function\_lookup\_t}) (
+typedef ompt\_interface\_fn\_t (*ompt\_function\_lookup\_t) (
   const char *\plc{interface\_function\_name}
 );
 \end{boxedcode}
@@ -1588,7 +1588,7 @@ C:
 \vbox{
  \begin{boxedcode}
 Fortran: 
-   subroutine ompt\_control(\plc{command}, \plc{modifier})
+   subroutine ompt\_control(command, modifier)
    integer*8 command, modifier
 \end{boxedcode}
 }
@@ -1856,8 +1856,8 @@ typedef struct ompt\_frame\_s {
 } ompt\_frame\_t;
 
 #define ompt\_hwid\_none                (-1)
-#define ompt\_dev\_task\_none            (~0\plc{ULL})
-#define ompt\_time\_none                (~0\plc{ULL})
+#define ompt\_dev\_task\_none            (~0ULL)
+#define ompt\_time\_none                (~0ULL)
 
 #define ompt\_id\_none                  0
 
@@ -1875,37 +1875,37 @@ The function signature  \code{ompt\_callback\_t} defined immediately below is us
 
 \begin{boxedcode}
 /* placeholder signature  */
-typedef void (*\plc{ompt\_callback\_t}) (    
+typedef void (*ompt\_callback\_t) (    
   \plc{void}
 );
 
 \begin{verbatim}
 /* initialization */
-typedef void (*\plc{ompt\_interface\_fn\_t}) (
+typedef void (*ompt\_interface\_fn\_t) (
   \plc{void}
 );
 
-typedef ompt\_interface\_fn\_t (*\plc{ompt\_function\_lookup\_t}) (
+typedef ompt\_interface\_fn\_t (*ompt\_function\_lookup\_t) (
   const char *\plc{interface\_function\_name} /* OMPT\_API function name to look up      */
 );
 
 /* threads */
-typedef void (*\plc{ompt\_thread\_begin\_callback\_t}) (
+typedef void (*ompt\_thread\_begin\_callback\_t) (
   ompt\_thread\_type\_t \plc{thread\_type},    /* type of thread              */
   ompt\_data\_t *\plc{thread\_data}           /* thread data (tool controlled) */
 );
 
-typedef void (*\plc{ompt\_thread\_end\_callback\_t}) (
+typedef void (*ompt\_thread\_end\_callback\_t) (
   ompt\_data\_t *\plc{thread\_data}           /* thread data (tool controlled) */
 );
 
 /* idle */
-typedef void (*\plc{ompt\_idle\_callback\_t}) ( 
+typedef void (*ompt\_idle\_callback\_t) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint}     /* begin or end                */
 );
 
 /* parallel regions */
-typedef void (*\plc{ompt\_parallel\_begin\_callback\_t}) (
+typedef void (*ompt\_parallel\_begin\_callback\_t) (
   ompt\_data\_t *\plc{parent\_task\_data},     /* parent task data (tool \plc{controlled}) */
   const ompt\_frame\_t *\plc{parent\_frame},  /* frame data of parent task   */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
@@ -1914,7 +1914,7 @@ typedef void (*\plc{ompt\_parallel\_begin\_callback\_t}) (
   const void *\plc{codeptr\_ra}             /* return address of api call  */ 
 );
 
-typedef void (*\plc{ompt\_parallel\_end\_callback\_t}) (
+typedef void (*ompt\_parallel\_end\_callback\_t) (
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
   ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
   ompt\_invoker\_t \plc{invoker},            /* who invokes master task?    */
@@ -1922,7 +1922,7 @@ typedef void (*\plc{ompt\_parallel\_end\_callback\_t}) (
 );
 
 /* task regions */
-typedef void (*\plc{ompt\_task\_create\_callback\_t}) ( 
+typedef void (*ompt\_task\_create\_callback\_t) ( 
   ompt\_data\_t *\plc{parent\_task\_data},     /* parent task data (tool \plc{controlled}) */
   const ompt\_frame\_t *\plc{parent\_frame},  /* frame data for parent task  */
   ompt\_data\_t *\plc{new\_task\_data},        /* created task's data (tool \plc{controlled}) */
@@ -1931,24 +1931,24 @@ typedef void (*\plc{ompt\_task\_create\_callback\_t}) (
   const void *\plc{codeptr\_ra}             /* return address of api call  */ 
 );
 
-typedef void (*\plc{ompt\_task\_dependences\_callback\_t}) (                                   
+typedef void (*ompt\_task\_dependences\_callback\_t) (                                   
   ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
   const ompt\_task\_dependence\_t *\plc{deps},/* vector of task dependences  */
   int \plc{ndeps}                          /* number of dependences       */
 );
 
-typedef void (*\plc{ompt\_task\_dependence\_callback\_t}) (
+typedef void (*ompt\_task\_dependence\_callback\_t) (
   ompt\_data\_t *\plc{src\_task\_data},        /* dependence source task data (tool \plc{controlled}) */
   ompt\_data\_t *\plc{sink\_task\_data}        /* dependence sink task data (tool controlled) */
 );
 
-typedef void (*\plc{ompt\_task\_schedule\_callback\_t}) (
+typedef void (*ompt\_task\_schedule\_callback\_t) (
   ompt\_data\_t *\plc{prior\_task\_data},      /* descheduled task data (tool \plc{controlled}) */
   \_Bool \plc{prior\_completed},             /* true if prior task completed*/
   ompt\_data\_t *\plc{next\_task\_data}        /* scheduled task data (tool controlled) */
 );
 
-typedef void (*\plc{ompt\_scoped\_implicit\_callback\_t}) ( 
+typedef void (*ompt\_scoped\_implicit\_callback\_t) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
   ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
@@ -1956,7 +1956,7 @@ typedef void (*\plc{ompt\_scoped\_implicit\_callback\_t}) (
 );
 
 /* task synchronization */
-typedef void (*\plc{ompt\_scoped\_sync\_region\_callback\_t}) ( 
+typedef void (*ompt\_scoped\_sync\_region\_callback\_t) ( 
   ompt\_sync\_region\_kind\_t \plc{kind},      /* \plc{barrier}, \plc{taskwait}, taskgroup*/
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */ 
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
@@ -1965,7 +1965,7 @@ typedef void (*\plc{ompt\_scoped\_sync\_region\_callback\_t}) (
 );
 
 /* mutual exclusion */
-typedef void (*\plc{ompt\_lock\_init\_callback\_t}) (
+typedef void (*ompt\_lock\_init\_callback\_t) (
   \_Bool \plc{is\_nest\_lock},                /* nested lock or not          */
   ompt\_wait\_id\_t \plc{wait\_id},            /* wait ID                     */
   uint32\_t \plc{hint},                     /* OMP lock hint               */
@@ -1973,13 +1973,13 @@ typedef void (*\plc{ompt\_lock\_init\_callback\_t}) (
   const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
-typedef void (*\plc{ompt\_lock\_destroy\_callback\_t}) (
+typedef void (*ompt\_lock\_destroy\_callback\_t) (
   \_Bool \plc{is\_nest\_lock},                /* nested lock or not          */
   ompt\_wait\_id\_t \plc{wait\_id},            /* wait ID                     */
   const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
-typedef void (*\plc{ompt\_mutex\_acquire\_callback\_t}) ( 
+typedef void (*ompt\_mutex\_acquire\_callback\_t) ( 
   ompt\_mutex\_kind\_t \plc{kind},            /* kind of mutex               */
   uint32\_t \plc{hint},                     /* based on OMP lock hint      */
   uint32\_t \plc{impl},                     /* implementation of mutex     */
@@ -1987,20 +1987,20 @@ typedef void (*\plc{ompt\_mutex\_acquire\_callback\_t}) (
   const void *\plc{codeptr\_ra}             /* return address of api call  */          
 );
 
-typedef void (*\plc{ompt\_mutex\_callback\_t}) ( 
+typedef void (*ompt\_mutex\_callback\_t) ( 
   ompt\_mutex\_kind\_t \plc{kind},            /* kind of mutex               */ 
   ompt\_wait\_id\_t \plc{wait\_id},            /* ID of mutex being awaited   */
   const void *\plc{codeptr\_ra}             /* return address of api call  */          
 );
 
-typedef void (*\plc{ompt\_scoped\_nested\_lock\_callback\_t}) ( 
+typedef void (*ompt\_scoped\_nested\_lock\_callback\_t) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */ 
   ompt\_wait\_id\_t \plc{wait\_id},            /* ID of mutex being awaited   */
   const void *\plc{codeptr\_ra}             /* return address of api call  */          
 );
 
 /* master */
-typedef void (*\plc{ompt\_scoped\_master\_callback\_t}) ( 
+typedef void (*ompt\_scoped\_master\_callback\_t) ( 
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
   ompt\_data\_t *\plc{task\_data},            /* task data (tool \plc{controlled}) */
@@ -2008,7 +2008,7 @@ typedef void (*\plc{ompt\_scoped\_master\_callback\_t}) (
 );
 
 /* worksharing regions */
-typedef void (*\plc{ompt\_scoped\_worksharing\_callback\_t}) (
+typedef void (*ompt\_scoped\_worksharing\_callback\_t) (
   ompt\_worksharing\_type\_t \plc{wstype},    /* \plc{loop}, \plc{sections}, single ...  */
   ompt\_scope\_endpoint\_t \plc{endpoint},    /* begin or end                */
   ompt\_data\_t *\plc{parallel\_data},        /* parallel data (tool \plc{controlled}) */
@@ -2017,7 +2017,7 @@ typedef void (*\plc{ompt\_scoped\_worksharing\_callback\_t}) (
 );
 
 /* target regions */
-typedef void (*\plc{ompt\_scoped\_target\_callback\_t}) ( 
+typedef void (*ompt\_scoped\_target\_callback\_t) ( 
   int32\_t \plc{device\_id},                 /* ID of the device            */
   ompt\_target\_type\_t \plc{kind},           /* \plc{target}, target \plc{data},...     */
   ompt\_data\_t *\plc{task\_data},            /* encountering task data (tool \plc{controlled}) */
@@ -2026,7 +2026,7 @@ typedef void (*\plc{ompt\_scoped\_target\_callback\_t}) (
   const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
-typedef void (*\plc{ompt\_target\_data\_callback\_t}) (
+typedef void (*ompt\_target\_data\_callback\_t) (
   ompt\_id\_t \plc{target\_id},               /* ID of the target region     */
   ompt\_id\_t \plc{host\_op\_id},              /* host side ID for operation  */
   ompt\_target\_data\_op\_t \plc{optype},      /* type of operation           */
@@ -2035,7 +2035,7 @@ typedef void (*\plc{ompt\_target\_data\_callback\_t}) (
   size\_t \plc{bytes}                       /* number of bytes mapped      */
 );
 
-typedef void (*\plc{ompt\_target\_data\_map\_callback\_t}) (
+typedef void (*ompt\_target\_data\_map\_callback\_t) (
   ompt\_id\_t \plc{target\_id}, 
   uint32\_t \plc{nitems},                   /* # of items to be mapped     */
   void **\plc{host\_addr},                  /* host address of the data    */
@@ -2044,7 +2044,7 @@ typedef void (*\plc{ompt\_target\_data\_map\_callback\_t}) (
   uint32\_t *\plc{mapping\_flags}            /* sync/async, to/from         */
 );
 
-typedef void (*\plc{ompt\_target\_submit\_callback\_t}) (
+typedef void (*ompt\_target\_submit\_callback\_t) (
   ompt\_id\_t \plc{target\_id},               /* ID of the target region     */
   ompt\_id\_t \plc{host\_op\_id},              /* host side ID for operation  */
   uint32\_t \plc{requested\_num\_teams},      /* number of teams requested   */
@@ -2052,13 +2052,13 @@ typedef void (*\plc{ompt\_target\_submit\_callback\_t}) (
 );
 
 /* target trace buffer management routines */
-typedef void (*\plc{ompt\_target\_buffer\_request\_callback\_t}) (
+typedef void (*ompt\_target\_buffer\_request\_callback\_t) (
   int32\_t \plc{device\_id},                 /* target device               */
   ompt\_target\_buffer\_t** \plc{buffer},     /* host buffer for trace       */
   size\_t *\plc{bytes}                      /* buffer size in bytes        */
 );
   
-typedef void (*\plc{ompt\_target\_buffer\_complete\_callback\_t}) (
+typedef void (*ompt\_target\_buffer\_complete\_callback\_t) (
   int32\_t \plc{device\_id},                 /* target device               */
   const ompt\_target\_buffer\_t *\plc{buf},   /* target trace records        */
   size\_t \plc{bytes},                      /* valid bytes in the buffer   */
@@ -2066,20 +2066,20 @@ typedef void (*\plc{ompt\_target\_buffer\_complete\_callback\_t}) (
   \_Bool \plc{buffer\_owned}                 /* true = may delete buffer    */
 );
 
-typedef void (*\plc{ompt\_get\_target\_info\_inquiry\_t}) (
+typedef void (*ompt\_get\_target\_info\_inquiry\_t) (
   ompt\_id\_t *\plc{target\_id},              /* target region id            */
   ompt\_id\_t *\plc{host\_op\_id}              /* host side ID for operation  */
 );
 
 /* application tool control */
-typedef void (*\plc{ompt\_control\_callback\_t}) (
+typedef void (*ompt\_control\_callback\_t) (
   uint64\_t \plc{command},                  /* command of control call     */
   uint64\_t \plc{modifier},                 /* modifier of control call    */
   const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
 
 /* flush */
-typedef void (*\plc{ompt\_flush\_callback\_t}) (
+typedef void (*ompt\_flush\_callback\_t) (
   ompt\_data\_t *\plc{thread\_data},          /* thread data (tool \plc{controlled}) */
   const void *\plc{codeptr\_ra}             /* return address of api call  */
 );
@@ -2435,7 +2435,7 @@ extern "C" {
 Function \code{ompt\_tool} returns a pointer to a tool initializer, whose type signature is described below. Use of this interface is described in Section~\ref{sec:init}.
 
 \begin{boxedcode}
-typedef void (*\plc{ompt\_initialize\_fn\_t}) (
+typedef void (*ompt\_initialize\_fn\_t) (
   ompt\_function\_lookup\_t \plc{lookup},
   const char *\plc{runtime\_version}, 
   unsigned int \plc{ompt\_version}

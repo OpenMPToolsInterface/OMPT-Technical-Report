@@ -26,7 +26,8 @@ sub trueaddplcblock{
 
 sub addplc{
   my $string = shift;
-  $string =~ s/(\((?>[^()]+|(?1))*\))/"".trueaddplc("${1}").""/esg;
+  $string =~ s/(while\s*)(\((?>[^()]+|(?2))*\))/"${1}".trueaddplc("${2}").""/esg;
+  $string =~ s/(\((?>[^()]+|(?1))*\))(\s*;)/"".trueaddplc("${1}")."${2}"/esg;
   return $string;
 }
 
